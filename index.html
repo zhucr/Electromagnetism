@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>安徽师范大学 · 电动力学教学仿真互动平台</title>
+  <style>
+    :root {
+      --ahnu-blue: #003d7a;
+      --ahnu-gold: #c9a227;
+      --ahnu-light: #f0f4f8;
+      --ahnu-dark: #1a1a2e;
+      --card-bg: #ffffff;
+      --text-main: #2d3748;
+      --text-sub: #718096;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+      min-height: 100vh;
+      color: var(--text-main);
+    }
+
+    /* ===== Header ===== */
+    .header {
+      background: linear-gradient(90deg, var(--ahnu-blue) 0%, #0056a3 100%);
+      color: white;
+      padding: 0 40px;
+      display: flex;
+      align-items: center;
+      height: 80px;
+      box-shadow: 0 4px 20px rgba(0,61,122,0.3);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-right: 18px;
+      flex-shrink: 0;
+    }
+    .header-logo .logo-badge {
+      height: 50px;
+      width: auto;
+      object-fit: contain;
+      display: block;
+      border-radius: 50%;
+    }
+    .header-logo .logo-text {
+      height: 36px;
+      width: auto;
+      object-fit: contain;
+      display: block;
+    }
+    .header-text h1 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 2px;
+    }
+    .header-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+    .header-right span {
+      font-size: 13px;
+      opacity: 0.8;
+    }
+    .header-right .badge {
+      background: var(--ahnu-gold);
+      color: var(--ahnu-blue);
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    /* ===== Hero ===== */
+    .hero {
+      text-align: center;
+      padding: 60px 20px 40px;
+      background: linear-gradient(180deg, rgba(0,61,122,0.03) 0%, transparent 100%);
+    }
+    .hero h2 {
+      font-size: 32px;
+      color: var(--ahnu-blue);
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .hero .subtitle {
+      font-size: 16px;
+      color: var(--text-sub);
+      max-width: 640px;
+      margin: 0 auto;
+      line-height: 1.8;
+    }
+    .hero .divider {
+      width: 80px;
+      height: 3px;
+      background: linear-gradient(90deg, var(--ahnu-blue), var(--ahnu-gold));
+      margin: 20px auto;
+      border-radius: 2px;
+    }
+
+    /* ===== Cards ===== */
+    .cards-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 28px;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px 40px 60px;
+    }
+    .exp-card {
+      background: var(--card-bg);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+      position: relative;
+      border: 1px solid rgba(0,61,122,0.06);
+      text-decoration: none;
+      color: inherit;
+      display: block;
+    }
+    .exp-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 16px 48px rgba(0,61,122,0.15);
+      border-color: rgba(0,61,122,0.15);
+    }
+    .exp-card .card-banner {
+      height: 160px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .card-banner .icon-wrap {
+      width: 80px;
+      height: 80px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      z-index: 1;
+      background: rgba(255,255,255,0.9);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+    .card1 .card-banner { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .card1 .icon-wrap { color: #667eea; }
+    .card2 .card-banner { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+    .card2 .icon-wrap { color: #11998e; }
+    .card3 .card-banner { background: linear-gradient(135deg, #fc4a1a 0%, #f7b733 100%); }
+    .card3 .icon-wrap { color: #fc4a1a; }
+    .card4 .card-banner { background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%); }
+    .card4 .icon-wrap { color: #2c5364; }
+    .card4 .card-tag { background: #e0f2fe; color: #075985; }
+    .card5 .card-banner { background: linear-gradient(135deg, #8e2de2 0%, #4a00e0 100%); }
+    .card5 .icon-wrap { color: #6d28d9; }
+    .card5 .card-tag { background: #f3e8ff; color: #6b21a8; }
+    .card6 .card-banner { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+    .card6 .icon-wrap { color: #d63384; }
+    .card6 .card-tag { background: #fce7f3; color: #9d174d; }
+    /* 法拉第电磁感应卡片（发电机/马达符号） */
+    .card7 .card-banner { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); }
+    .card7 .icon-wrap { color: #1e3c72; }
+    .card7 .card-tag { background: #dbeafe; color: #1e40af; }
+
+    .exp-card .card-body {
+      padding: 24px;
+    }
+    .exp-card .card-tag {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      letter-spacing: 0.5px;
+    }
+    .card1 .card-tag { background: #e0e7ff; color: #4338ca; }
+    .card2 .card-tag { background: #d1fae5; color: #065f46; }
+    .card3 .card-tag { background: #ffedd5; color: #9a3412; }
+    .exp-card h3 {
+      font-size: 20px;
+      color: var(--text-main);
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+    .exp-card .desc {
+      font-size: 14px;
+      color: var(--text-sub);
+      line-height: 1.7;
+      margin-bottom: 20px;
+      min-height: 48px;
+    }
+    .exp-card .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 16px;
+      border-top: 1px solid #edf2f7;
+    }
+    .exp-card .meta {
+      font-size: 12px;
+      color: var(--text-sub);
+      display: flex;
+      gap: 12px;
+    }
+    .exp-card .meta span {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .exp-card .btn-enter {
+      background: var(--ahnu-blue);
+      color: white;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .exp-card .btn-enter:hover {
+      background: #0056a3;
+      transform: scale(1.03);
+    }
+
+    /* ===== Footer ===== */
+    .footer {
+      background: var(--ahnu-dark);
+      color: rgba(255,255,255,0.6);
+      text-align: center;
+      padding: 30px 20px;
+      font-size: 13px;
+    }
+    .footer a {
+      color: var(--ahnu-gold);
+      text-decoration: none;
+    }
+
+    /* ===== Particles ===== */
+    .particles {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+    .particle {
+      position: absolute;
+      width: 6px; height: 6px;
+      background: var(--ahnu-blue);
+      border-radius: 50%;
+      opacity: 0.15;
+      animation: float 8s infinite ease-in-out;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0) translateX(0); }
+      25% { transform: translateY(-20px) translateX(10px); }
+      50% { transform: translateY(-10px) translateX(-10px); }
+      75% { transform: translateY(-30px) translateX(5px); }
+    }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 768px) {
+      .header { padding: 0 20px; height: 70px; }
+      .header-logo { gap: 8px; }
+      .header-logo .logo-badge { height: 40px; }
+      .header-logo .logo-text { height: 28px; }
+      .header-text h1 { font-size: 14px; }
+      .header-right span { display: none; }
+      .hero h2 { font-size: 24px; }
+      .cards-container { padding: 20px; gap: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="particles" id="particles"></div>
+
+  <!-- Header -->
+  <header class="header">
+    <a class="header-logo" href="https://ahnu.edu.cn/" target="_blank" style="text-decoration:none;">
+      <img class="logo-badge" src="logo1.png" alt="安徽师范大学校徽">
+      <img class="logo-text" src="logo2.png" alt="安徽师范大学">
+    </a>
+    <div class="header-text">
+      <h1>电动力学教学仿真互动平台</h1>
+    </div>
+    <div class="header-right">
+      <a href="https://physics.ahnu.edu.cn/" target="_blank" style="color:inherit;text-decoration:none;">物理与光电学院</a>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero">
+    <h2>电动力学虚拟仿真实验室</h2>
+    <div class="divider"></div>
+    <p class="subtitle">
+      基于 Web 技术的交互式电磁场仿真平台，目前涵盖静电学、电磁感应、波导、振荡电偶极子辐射等核心实验模块，
+      助力学生直观理解电动力学概念。
+    </p>
+  </section>
+
+  <!-- Experiment Cards -->
+  <main class="cards-container">
+
+    <!-- Card 1: 点电荷电势 -->
+    <a class="exp-card card1" href="point_charge.html" target="_blank">
+      <div class="card-banner">
+        <div class="icon-wrap">⚡</div>
+      </div>
+      <div class="card-body">
+        <span class="card-tag">静电学</span>
+        <h3>点电荷电势分布</h3>
+        <p class="desc">
+          模拟单个及多个点电荷在空间中的电势分布与电场线，支持电荷量、位置实时调节，直观展示库仑定律与电势叠加原理。
+        </p>
+        <div class="card-footer">
+          <div class="meta">
+            <span>📐 2D 可视化</span>
+            <span>🔧 参数可调</span>
+          </div>
+          <span class="btn-enter">进入实验 →</span>
+        </div>
+      </div>
+    </a>
+
+    <!-- Card 2: 法拉第电磁感应定律（第二位，发电机/马达符号） -->
+    <a class="exp-card card7" href="faraday.html" target="_blank">
+      <div class="card-banner">
+        <div class="icon-wrap">🔄</div>
+      </div>
+      <div class="card-body">
+        <span class="card-tag">电磁感应</span>
+        <h3>法拉第电磁感应定律</h3>
+        <p class="desc">
+          通过条形磁铁与螺线管的相对运动，实时演示感应电动势的产生与变化。磁场线从N极表面出发、回到S极表面，带方向箭头；支持自动匀速往复运动与手动拖动。
+        </p>
+        <div class="card-footer">
+          <div class="meta">
+            <span>🧲 磁场线可视化</span>
+            <span>⚡ 实时电动势</span>
+          </div>
+          <span class="btn-enter">进入实验 →</span>
+        </div>
+      </div>
+    </a>
+
+    <!-- Card 3: 波导模拟 -->
+    <a class="exp-card card2" href="waveguide.html" target="_blank">
+      <div class="card-banner">
+        <div class="icon-wrap">📡</div>
+      </div>
+      <div class="card-body">
+        <span class="card-tag">电磁波导</span>
+        <h3>矩形波导模式分析</h3>
+        <p class="desc">
+          仿真矩形波导中 TE/TM 模式的电磁场分布，展示场结构、相位变化等波导传输特性，支持模式切换。
+        </p>
+        <div class="card-footer">
+          <div class="meta">
+            <span>🌊 场结构可视化</span>
+            <span>📊 模式分析</span>
+          </div>
+          <span class="btn-enter">进入实验 →</span>
+        </div>
+      </div>
+    </a>
+
+    <!-- Card 4: 电偶极辐射 -->
+    <a class="exp-card card4" href="dipole_radiation.html" target="_blank">
+      <div class="card-banner">
+        <div class="icon-wrap">📻</div>
+      </div>
+      <div class="card-body">
+        <span class="card-tag">电磁辐射</span>
+        <h3>振荡电偶极子辐射</h3>
+        <p class="desc">
+          仿真振荡电偶极子的电磁场辐射过程，展示近场/远场过渡、等相位波前传播、E/B 场正交关系，支持辐射场模式切换与观测点示波器。
+        </p>
+        <div class="card-footer">
+          <div class="meta">
+            <span>🌐 辐射场可视化</span>
+            <span>📈 实时示波器</span>
+          </div>
+          <span class="btn-enter">进入实验 →</span>
+        </div>
+      </div>
+    </a>
+
+    <!-- Card 5: 全反射模拟 -->
+    <a class="exp-card card3" href="total_reflection.html" target="_blank">
+      <div class="card-banner">
+        <div class="icon-wrap">🔦</div>
+      </div>
+      <div class="card-body">
+        <span class="card-tag">光学与电磁波</span>
+        <h3>全反射与布儒斯特定律</h3>
+        <p class="desc">
+          演示光波在介质界面的全反射与布儒斯特角，支持入射角与折射率调节。
+        </p>
+        <div class="card-footer">
+          <div class="meta">
+            <span>💡 实时渲染</span>
+            <span>🔬 物理精确</span>
+          </div>
+          <span class="btn-enter">进入实验 →</span>
+        </div>
+      </div>
+    </a>
+
+    <!-- Card 6: 示波器原理 -->
+    <a class="exp-card card5" href="oscilloscope.html" target="_blank">
+      <div class="card-banner">
+        <div class="icon-wrap">📟</div>
+      </div>
+      <div class="card-body">
+        <span class="card-tag">虚拟仪器</span>
+        <h3>示波器原理虚拟仿真</h3>
+        <p class="desc">
+          模拟阴极射线示波器的工作原理，支持 Y-T 扫描、X-Y 李萨如图形、多种信号源输入与偏转电压调节，直观理解电子束偏转与荧光屏显示机制。
+        </p>
+        <div class="card-footer">
+          <div class="meta">
+            <span>📈 实时波形</span>
+            <span>🔧 参数可调</span>
+          </div>
+          <span class="btn-enter">进入实验 →</span>
+        </div>
+      </div>
+    </a>
+
+    <!-- Card 7: 运动电荷电磁场 -->
+    <a class="exp-card card6" href="move_point.html" target="_blank">
+      <div class="card-banner">
+        <div class="icon-wrap">🌀</div>
+      </div>
+      <div class="card-body">
+        <span class="card-tag">相对论电动力学</span>
+        <h3>运动电荷的电磁场</h3>
+        <p class="desc">
+          仿真匀速运动电荷的空间电磁场，展示相对论聚集效应、电场线与磁场圆环的动态分布，支持空间矢量场与场线双模式、低速近似切换。
+        </p>
+        <div class="card-footer">
+          <div class="meta">
+            <span>🔮 3D 矢量场</span>
+            <span>⚛️ 相对论效应</span>
+          </div>
+          <span class="btn-enter">进入实验 →</span>
+        </div>
+      </div>
+    </a>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>© 安徽师范大学 物理与光电学院 · 电动力学课程组</p>
+    <p style="margin-top:6px; font-size:13px;">联系人：朱老师 &lt;<a href="mailto:zhucr@ahnu.edu.cn">zhucr@ahnu.edu.cn</a>&gt; · 张老师 &lt;<a href="mailto:xyzhang@ahnu.edu.cn">xyzhang@ahnu.edu.cn</a>&gt;</p>
+    <p style="margin-top:4px; font-size:12px;">本平台仅供教学使用 | 任何使用问题欢迎联系</p>
+  </footer>
+
+  <script>
+    // Generate floating particles
+    const particlesContainer = document.getElementById('particles');
+    for (let i = 0; i < 80; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      p.style.left = Math.random() * 100 + '%';
+      p.style.top = Math.random() * 100 + '%';
+      p.style.animationDelay = Math.random() * 5 + 's';
+      p.style.animationDuration = (6 + Math.random() * 6) + 's';
+      p.style.width = (4 + Math.random() * 6) + 'px';
+      p.style.height = p.style.width;
+      particlesContainer.appendChild(p);
+    }
+  </script>
+
+</body>
+</html>

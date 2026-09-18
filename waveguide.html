@@ -1,0 +1,2212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>3D 矩形波导 电磁场可视化（时变）</title>
+<style>
+body {margin:0;background:#080816;overflow:hidden;display:flex;flex-direction:column;height:100vh;}
+:root { --ahnu-blue: #003d7a; --ahnu-gold: #c9a227; }
+.header {
+  background: linear-gradient(90deg, var(--ahnu-blue) 0%, #0056a3 100%);
+  color: white;
+  padding: 0 40px;
+  display: flex;
+  align-items: center;
+  height: 64px;
+  box-shadow: 0 4px 20px rgba(0,61,122,0.25);
+  flex-shrink: 0;
+  z-index: 100;
+}
+.header h1 { font-size: 18px; font-weight: 700; letter-spacing: 2px; }
+.header .back {
+  margin-left: auto;
+  color: white;
+  text-decoration: none;
+  font-size: 13px;
+  opacity: 0.85;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: opacity 0.2s;
+}
+.header .back:hover { opacity: 1; }
+#scene-wrap { flex: 1; position: relative; overflow: hidden; }
+canvas {display:block;}
+.info{position:absolute;top:20px;left:20px;color:#fff;background:rgba(0,0,0,0.6);padding:12px 16px;border-radius:8px;font-size:15px;z-index:10;max-width:340px;}
+.controls{position:absolute;bottom:20px;left:20px;color:#fff;background:rgba(0,0,0,0.6);padding:10px 16px;border-radius:8px;font-size:14px;z-index:10;}
+.legend{position:absolute;right:20px;color:#fff;background:rgba(0,0,0,0.6);padding:12px 16px;border-radius:8px;font-size:14px;z-index:10;line-height:1.6;}
+input,select{background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);border-radius:4px;padding:2px 6px;margin:0 4px;}
+input[type=number]{width:50px;}
+input[type=range]{width:100px;vertical-align:middle;}
+button{background:#3399ff;color:#fff;border:none;border-radius:4px;padding:4px 12px;cursor:pointer;margin-left:6px;}
+button:hover{background:#2277dd;}
+label{cursor:pointer;margin-right:8px;}
+</style>
+</head>
+<body>
+<header class="header">
+  <h1>📡 矩形波导模式分析</h1>
+  <a class="back" href="index.html">← 返回实验大厅</a>
+</header>
+<div id="scene-wrap">
+<div class="info" id="infoBox">
+<b> 安徽师范大学 3D TE₁₀ 波导电磁场（时变）</b><br>
+鼠标拖动旋转｜滚轮缩放
+</div>
+<div class="controls">
+模式: <select id="modeSel"><option value="TE">TE</option><option value="TM">TM</option></select>
+m: <input id="mInput" type="number" min="0" max="5" value="1">
+n: <input id="nInput" type="number" min="0" max="5" value="0">
+<button id="updateBtn">更新波模</button><br>
+<span style="display:inline-block;margin-top:5px;">波导尺寸（cm）:</span>
+a: <input id="aInput" type="number" min="0.1" step="0.1" value="6" style="width:58px;">
+b: <input id="bInput" type="number" min="0.1" step="0.1" value="2" style="width:58px;">
+z长度: <input id="lInput" type="number" min="0.2" step="0.1" value="12" style="width:58px;"><br>
+频率: <input id="freqInput" type="number" min="0.001" step="0.1" value="3.0" style="width:70px;"> GHz
+<span id="cutoffDisplay" style="margin-left:8px;color:#ffd966;"><b>截止频率:</b> -- GHz</span><br>
+时间相位: <span id="phase">0</span> rad | <button id="pauseBtn">⏸ 暂停</button><br>
+<label><input type="checkbox" id="showE" checked> 电场</label>
+<label><input type="checkbox" id="showM" checked> 磁场</label>
+<label><input type="checkbox" id="showCharge"> 壁面电荷</label>
+<label><input type="checkbox" id="showCurrent"> 管壁电流</label>
+<label><input type="checkbox" id="showGrid"> 空间网格</label><br>
+<label><input type="checkbox" id="showPoynting"> 坡印廷矢量</label><br>
+
+<div id="zSliceControl" style="margin-top:6px;">
+  <label><input type="checkbox" id="showZSlice"> 只显示z截面</label>
+  z位置(<span id="zSliceRange">-6~6</span>): <input id="zSliceInput" type="number" step="0.1" value="0" min="-6" max="6" style="width:60px;">
+</div>
+
+<div id="teEFieldModeControl" style="margin-top:6px;">
+  TE电场表达: <select id="teEFieldModeSel"><option value="arrow">箭头</option><option value="fieldline">场线</option></select>
+</div>
+
+<div id="teEDensityControl" style="margin-top:6px;">
+  TE电场线密度: <input type="range" id="teEDensity" min="1" max="50" step="1" value="5">
+  <span id="teEDensityVal">5</span>
+</div>
+<div id="teELengthControl" style="margin-top:6px;">
+  TE电场线长度: <input type="range" id="teELength" min="1" max="10" step="1" value="5">
+  <span id="teELengthVal">5</span>
+</div>
+<div id="teMDensityControl" style="margin-top:6px;display:none;">
+  TE磁力线密度: <input type="range" id="teMDensity" min="1" max="10" step="1" value="3">
+  <span id="teMDensityVal">3</span>
+</div>
+
+<div id="chargeOpacityControl" style="margin-top:6px;display:none;">
+  壁面电荷不透明度: <input type="range" id="chargeOpacity" min="0.1" max="1.0" step="0.05" value="0.5">
+  <span id="chargeOpacityVal">0.50</span>
+</div>
+<div id="tmDensityControl" style="margin-top:6px;display:none;">
+  TM电场线密度: <input type="range" id="tmDensity" min="1" max="10" step="1" value="3">
+  <span id="tmDensityVal">3</span>
+</div>
+<div id="tmMDensityControl" style="margin-top:6px;display:none;">
+  TM磁力线密度: <input type="range" id="tmMDensity" min="1" max="10" step="1" value="3">
+  <span id="tmMDensityVal">3</span>
+</div>
+<div id="currentDensityControl" style="margin-top:6px;display:none;">
+  电流线密度: <input type="range" id="currentDensity" min="1" max="10" step="1" value="5">
+  <span id="currentDensityVal">5</span>
+</div>
+<div id="currentLengthControl" style="margin-top:6px;display:none;">
+  电流线长度: <input type="range" id="currentLength" min="1" max="10" step="1" value="5">
+  <span id="currentLengthVal">5</span>
+</div>
+<div id="poyntingDensityControl" style="margin-top:6px;display:none;">
+  坡印廷矢量密度: <input type="range" id="poyntingDensity" min="1" max="10" step="1" value="3">
+  <span id="poyntingDensityVal">3</span>
+</div>
+<div id="poyntingLengthControl" style="margin-top:6px;display:none;">
+  坡印廷矢量长度: <input type="range" id="poyntingLength" min="1" max="10" step="1" value="5">
+  <span id="poyntingLengthVal">5</span>
+</div>
+<div id="wallOpacityControl" style="margin-top:6px;">
+  管壁不透明度: <input type="range" id="wallOpacity" min="0" max="1.0" step="0.05" value="0">
+  <span id="wallOpacityVal">0.00</span>
+</div>
+<div style="margin-top:8px;border-top:1px solid rgba(255,255,255,0.2);padding-top:6px;">
+  <b>选点分析</b>（坐标）:
+  <button id="updateProbeBtn">更新探针</button>
+  <button id="clearPickBtn">清除选点</button>
+</div>
+
+<div style="margin-top:8px;border-top:1px ;">
+  x(<span id="probeXRange">-3~3</span>): <input id="probeX" type="number" step="0.1" value="0">
+  y(<span id="probeYRange">0~2</span>): <input id="probeY" type="number" step="0.1" value="1">
+  z(<span id="probeZRange">-6~6</span>): <input id="probeZ" type="number" step="0.1" value="0">
+</div>
+
+</div>
+
+<div class="legend" id="fieldLegend" style="top:20px;">
+<b>电场 |E|（暖色）</b><br>
+<div style="display:flex;align-items:center;margin-top:6px;">
+  <span style="color:#ffdd00;font-size:18px;">■</span>
+  <div style="width:100px;height:10px;background:linear-gradient(to right, #ffdd00, #ff0000);margin:0 6px;border-radius:2px;"></div>
+  <span style="color:#ff0000;font-size:18px;">■</span>
+</div>
+<div style="text-align:center;font-size:12px;margin-top:2px;">弱 &nbsp;→&nbsp; 强</div>
+<br>
+<b>磁场 |H|（冷色）</b><br>
+<div style="display:flex;align-items:center;margin-top:6px;">
+  <span style="color:#00aaff;font-size:18px;">■</span>
+  <div style="width:100px;height:10px;background:linear-gradient(to right, #00aaff, #6600ff);margin:0 6px;border-radius:2px;"></div>
+  <span style="color:#6600ff;font-size:18px;">■</span>
+</div>
+<div style="text-align:center;font-size:12px;margin-top:2px;">弱 &nbsp;→&nbsp; 强</div>
+</div>
+
+<div class="legend" id="chargeLegend" style="top:230px;display:none;">
+<b>壁面电荷密度 σ = ε₀Eₙ</b><br>
+<div style="display:flex;align-items:center;margin-top:6px;">
+  <span style="color:#0000ff;font-size:18px;">■</span>
+  <div style="width:100px;height:10px;background:linear-gradient(to right, #0000ff, #ffffff, #ff0000);margin:0 6px;border-radius:2px;"></div>
+  <span style="color:#ff0000;font-size:18px;">■</span>
+</div>
+<div style="text-align:center;font-size:12px;margin-top:2px;">负 &nbsp;→&nbsp; 零 &nbsp;→&nbsp; 正</div>
+</div>
+
+<div class="legend" id="poyntingLegend" style="top:350px;display:none;">
+<b>坡印廷矢量 S = E × H</b><br>
+<div style="display:flex;align-items:center;margin-top:6px;">
+  <span style="color:#fff0f5;font-size:18px;">■</span>
+  <div style="width:100px;height:10px;background:linear-gradient(to right, #fff0f5, #ff88cc, #ff3399, #cc0066, #660066);margin:0 6px;border-radius:2px;"></div>
+  <span style="color:#660066;font-size:18px;">■</span>
+</div>
+<div style="text-align:center;font-size:12px;margin-top:2px;">弱 &nbsp;→&nbsp; 强</div>
+</div>
+
+<div class="legend" id="currentLegend" style="top:470px;display:none;">
+<b>管壁电流密度 J = n̂×H</b><br>
+<div style="display:flex;align-items:center;margin-top:6px;">
+  <span style="color:#eeffaa;font-size:18px;">■</span>
+  <div style="width:100px;height:10px;background:linear-gradient(to right, #eeffaa, #00ff44, #052805);margin:0 6px;border-radius:2px;"></div>
+  <span style="color:#052805;font-size:18px;">■</span>
+</div>
+<div style="text-align:center;font-size:12px;margin-top:2px;">弱 &nbsp;→&nbsp; 强</div>
+</div>
+
+<!-- 新增：探针图例 -->
+<div class="legend" id="probeLegend" style="top:470px;display:none;">
+<b>探针读数</b><br>
+<div style="margin-top:6px;display:flex;align-items:center;">
+  <span style="font-size:20px;margin-right:6px;">🔍</span>
+  <span>白色球：探针位置</span>
+</div>
+<div style="margin-top:4px;display:flex;align-items:center;">
+  <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:linear-gradient(to right, #0000ff, #ffffff, #ff0000);margin-right:6px;border:1px solid rgba(0,0,0,1);"></span>
+  <span>球颜色/大小：壁面电荷密度 σ</span>
+</div>
+<div style="margin-top:4px;display:flex;align-items:center;">
+  <span style="color:#00ff44;font-size:18px;margin-right:6px;">➜</span>
+  <span>绿色箭头：局部电流密度 J</span>
+</div>
+<div style="margin-top:4px;display:flex;align-items:center;">
+  <span style="color:#ff4444;font-size:18px;margin-right:6px;">➜</span>
+  <span>红色箭头：瞬时电场 E</span>
+</div>
+<div style="margin-top:4px;display:flex;align-items:center;">
+  <span style="color:#44aaff;font-size:18px;margin-right:6px;">➜</span>
+  <span>蓝色箭头：瞬时磁场 H</span>
+</div>
+<div style="margin-top:4px;display:flex;align-items:center;">
+  <span style="color:#ff3399;font-size:18px;margin-right:6px;">➜</span>
+  <span>品红箭头：坡印廷矢量 S = E×H</span>
+</div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color("#080816");
+const camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.1, 2000);
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth,innerHeight);
+document.getElementById('scene-wrap').appendChild(renderer.domElement);
+
+camera.position.set(14,9,16);
+const controls = new OrbitControls(camera,renderer.domElement);
+controls.enableDamping = true;
+controls.target.set(0,1,0);
+
+scene.add(new THREE.AmbientLight(0xffffff,0.7));
+const dirLight = new THREE.DirectionalLight(0xffffff,1);
+dirLight.position.set(20,20,20);
+scene.add(dirLight);
+
+let a = 6, b = 2, L = 12; // cm；L 为 z 方向长度
+const C_CM_PER_NS = 29.9792458; // 光速，cm/ns；1/ns = GHz
+
+// 修改：分离侧面材质与端面材质，两端开口始终透明
+const sideMat = new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,depthWrite:false});
+const endMat = new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,depthWrite:false});
+const boxMat = [sideMat, sideMat, sideMat, sideMat, endMat, endMat]; // 0:right, 1:left, 2:top, 3:bottom, 4:front, 5:back
+
+let waveguide = new THREE.Mesh(new THREE.BoxGeometry(a,b,L),boxMat);
+waveguide.position.y = b/2;
+scene.add(waveguide);
+
+let edgeLine = new THREE.LineSegments(
+  new THREE.EdgesGeometry(new THREE.BoxGeometry(a+0.03,b+0.03,L+0.03)),
+  new THREE.LineBasicMaterial({color:0x99ccff})
+);
+edgeLine.position.y = b/2;
+scene.add(edgeLine);
+
+let mode = 'TE';
+let m = 1, n = 0;
+let frequencyGHz = 3.0;
+let cutoffGHz = 0;
+let beta = 0.8; // rad/cm，按输入频率实时计算
+let omega = 1.5; // 可视化时间相位速度，随频率变化
+let time = 0;
+let isRunning = true;
+let tmDensity = 3;
+let tmMDensity = 3;
+let currentDensity = 5;
+let currentLength = 5;
+let wallOpacity = 0;
+let poyntingDensity = 3;
+let poyntingLength = 5;
+let teEFieldMode = 'arrow';
+let teEDensity = 5;
+let teELength = 5;
+let teMDensity = 3;
+let showZSlice = false;
+let zSliceValue = 0;
+
+const modeSel = document.getElementById('modeSel');
+const mInput = document.getElementById('mInput');
+const nInput = document.getElementById('nInput');
+const aInput = document.getElementById('aInput');
+const bInput = document.getElementById('bInput');
+const lInput = document.getElementById('lInput');
+const freqInput = document.getElementById('freqInput');
+const cutoffDisplay = document.getElementById('cutoffDisplay');
+const zSliceRange = document.getElementById('zSliceRange');
+const probeXRange = document.getElementById('probeXRange');
+const probeYRange = document.getElementById('probeYRange');
+const probeZRange = document.getElementById('probeZRange');
+const updateBtn = document.getElementById('updateBtn');
+const pauseBtn = document.getElementById('pauseBtn');
+const infoBox = document.getElementById('infoBox');
+const showECheck = document.getElementById('showE');
+const showMCheck = document.getElementById('showM');
+const showChargeCheck = document.getElementById('showCharge');
+const showCurrentCheck = document.getElementById('showCurrent');
+const showGridCheck = document.getElementById('showGrid');
+const showPoyntingCheck = document.getElementById('showPoynting');
+const fieldLegend = document.getElementById('fieldLegend');
+const chargeLegend = document.getElementById('chargeLegend');
+const currentLegend = document.getElementById('currentLegend');
+const poyntingLegend = document.getElementById('poyntingLegend');
+const poyntingDensityControl = document.getElementById('poyntingDensityControl');
+const poyntingDensityInput = document.getElementById('poyntingDensity');
+const poyntingDensityVal = document.getElementById('poyntingDensityVal');
+const poyntingLengthControl = document.getElementById('poyntingLengthControl');
+const poyntingLengthInput = document.getElementById('poyntingLength');
+const poyntingLengthVal = document.getElementById('poyntingLengthVal');
+const probeLegend = document.getElementById('probeLegend');
+const chargeOpacityControl = document.getElementById('chargeOpacityControl');
+const chargeOpacityInput = document.getElementById('chargeOpacity');
+const chargeOpacityVal = document.getElementById('chargeOpacityVal');
+const tmDensityControl = document.getElementById('tmDensityControl');
+const tmDensityInput = document.getElementById('tmDensity');
+const tmDensityVal = document.getElementById('tmDensityVal');
+const tmMDensityControl = document.getElementById('tmMDensityControl');
+const tmMDensityInput = document.getElementById('tmMDensity');
+const tmMDensityVal = document.getElementById('tmMDensityVal');
+const currentDensityControl = document.getElementById('currentDensityControl');
+const currentDensityInput = document.getElementById('currentDensity');
+const currentDensityVal = document.getElementById('currentDensityVal');
+const currentLengthControl = document.getElementById('currentLengthControl');
+const currentLengthInput = document.getElementById('currentLength');
+const currentLengthVal = document.getElementById('currentLengthVal');
+const wallOpacityControl = document.getElementById('wallOpacityControl');
+const wallOpacityInput = document.getElementById('wallOpacity');
+const wallOpacityVal = document.getElementById('wallOpacityVal');
+
+const probeXInput = document.getElementById('probeX');
+const probeYInput = document.getElementById('probeY');
+const probeZInput = document.getElementById('probeZ');
+const updateProbeBtn = document.getElementById('updateProbeBtn');
+const clearPickBtn = document.getElementById('clearPickBtn');
+const teEFieldModeSel = document.getElementById('teEFieldModeSel');
+const teEFieldModeControl = document.getElementById('teEFieldModeControl');
+
+const showZSliceCheck = document.getElementById('showZSlice');
+const zSliceInput = document.getElementById('zSliceInput');
+const zSliceControl = document.getElementById('zSliceControl');
+
+const teEDensityControl = document.getElementById('teEDensityControl');
+const teEDensityInput = document.getElementById('teEDensity');
+const teEDensityVal = document.getElementById('teEDensityVal');
+const teELengthControl = document.getElementById('teELengthControl');
+const teELengthInput = document.getElementById('teELength');
+const teELengthVal = document.getElementById('teELengthVal');
+const teMDensityControl = document.getElementById('teMDensityControl');
+const teMDensityInput = document.getElementById('teMDensity');
+const teMDensityVal = document.getElementById('teMDensityVal');
+
+function calculateCutoffGHz() {
+  return (C_CM_PER_NS / 2) * Math.sqrt((m/a)**2 + (n/b)**2);
+}
+
+function updatePropagationParameters() {
+  cutoffGHz = calculateCutoffGHz();
+  const k0 = 2 * Math.PI * frequencyGHz / C_CM_PER_NS;
+  const kc = Math.sqrt(get_kc2());
+  const aboveCutoff = frequencyGHz > cutoffGHz + 1e-9;
+  beta = aboveCutoff ? Math.sqrt(Math.max(0, k0*k0 - kc*kc)) : 0;
+  omega = 1.5 * Math.max(0.15, frequencyGHz / Math.max(cutoffGHz, 1e-6));
+  const status = aboveCutoff ? '传播' : (Math.abs(frequencyGHz-cutoffGHz) < 1e-9 ? '截止' : '低于截止，不传播');
+  cutoffDisplay.innerHTML = `<b>截止频率:</b> ${cutoffGHz.toFixed(3)} GHz ｜ <b>状态:</b> ${status} ｜ β=${beta.toFixed(3)} rad/cm`;
+  cutoffDisplay.style.color = aboveCutoff ? '#9cff9c' : '#ffd966';
+}
+
+function updateDimensionRanges() {
+  zSliceInput.min = (-L/2).toString(); zSliceInput.max = (L/2).toString();
+  zSliceRange.textContent = `${(-L/2).toFixed(2)}~${(L/2).toFixed(2)}`;
+  probeXInput.min = (-a/2).toString(); probeXInput.max = (a/2).toString();
+  probeYInput.min = '0'; probeYInput.max = b.toString();
+  probeZInput.min = (-L/2).toString(); probeZInput.max = (L/2).toString();
+  probeXRange.textContent = `${(-a/2).toFixed(2)}~${(a/2).toFixed(2)}`;
+  probeYRange.textContent = `0~${b.toFixed(2)}`;
+  probeZRange.textContent = `${(-L/2).toFixed(2)}~${(L/2).toFixed(2)}`;
+  zSliceValue = Math.max(-L/2, Math.min(L/2, zSliceValue));
+  zSliceInput.value = zSliceValue.toFixed(2);
+}
+
+function rebuildWaveguideGeometry() {
+  if(waveguide.geometry) waveguide.geometry.dispose();
+  waveguide.geometry = new THREE.BoxGeometry(a,b,L);
+  waveguide.position.y = b/2;
+  if(edgeLine.geometry) edgeLine.geometry.dispose();
+  edgeLine.geometry = new THREE.EdgesGeometry(new THREE.BoxGeometry(a+0.03,b+0.03,L+0.03));
+  edgeLine.position.y = b/2;
+  updateDimensionRanges();
+  if(pickedPoint && (pickedPoint.x < -a/2 || pickedPoint.x > a/2 || pickedPoint.y < 0 || pickedPoint.y > b || pickedPoint.z < -L/2 || pickedPoint.z > L/2)) {
+    clearPickedPoint();
+  }
+}
+
+function updateLegendVisibility() {
+    fieldLegend.style.display = (showECheck.checked || showMCheck.checked) ? 'block' : 'none';
+    chargeLegend.style.display = showChargeCheck.checked ? 'block' : 'none';
+    currentLegend.style.display = showCurrentCheck.checked ? 'block' : 'none';
+    poyntingLegend.style.display = showPoyntingCheck.checked ? 'block' : 'none';
+    poyntingDensityControl.style.display = showPoyntingCheck.checked ? 'block' : 'none';
+    poyntingLengthControl.style.display = showPoyntingCheck.checked ? 'block' : 'none';
+    chargeOpacityControl.style.display = showChargeCheck.checked ? 'block' : 'none';
+    const showZSliceControl = (mode === 'TE' && showECheck.checked) || (mode === 'TM' && showMCheck.checked);
+    zSliceControl.style.display = showZSliceControl ? 'block' : 'none';
+    const showTEArrowControls = (mode === 'TE' && showECheck.checked && teEFieldMode === 'arrow');
+    teEDensityControl.style.display = showTEArrowControls ? 'block' : 'none';
+    teELengthControl.style.display = showTEArrowControls ? 'block' : 'none';
+    const showTEMFieldControls = (mode === 'TE' && showMCheck.checked);
+    teMDensityControl.style.display = showTEMFieldControls ? 'block' : 'none';
+    const showTEFieldLineControl = (mode === 'TE' && m > 0 && n > 0 && showECheck.checked);
+    teEFieldModeControl.style.display = showTEFieldLineControl ? 'block' : 'none';
+    tmDensityControl.style.display = (mode === 'TM' && showECheck.checked) ? 'block' : 'none';
+    tmMDensityControl.style.display = (mode === 'TM' && showMCheck.checked) ? 'block' : 'none';
+    currentDensityControl.style.display = showCurrentCheck.checked ? 'block' : 'none';
+    currentLengthControl.style.display = showCurrentCheck.checked ? 'block' : 'none';
+
+    // 探针图例随 pickedPoint 状态自动显隐
+    probeLegend.style.display = pickedPoint ? 'block' : 'none';
+}
+
+pauseBtn.addEventListener('click', () => {
+    isRunning = !isRunning;
+    pauseBtn.textContent = isRunning ? '⏸ 暂停' : '▶ 继续';
+});
+
+modeSel.addEventListener('change', () => {
+    if(modeSel.value === 'TM' && parseInt(nInput.value) === 0) nInput.value = 1;
+});
+
+updateBtn.addEventListener('click', () => {
+    mode = modeSel.value;
+    m = parseInt(mInput.value);
+    n = parseInt(nInput.value);
+    const newA = parseFloat(aInput.value);
+    const newB = parseFloat(bInput.value);
+    const newL = parseFloat(lInput.value);
+    const newFreq = parseFloat(freqInput.value);
+    if(!(newA > 0) || !(newB > 0) || !(newL > 0) || !(newFreq > 0)) {
+      alert('a、b、z长度和频率必须为正数'); return;
+    }
+    a = newA; b = newB; L = newL; frequencyGHz = newFreq;
+    if(mode === 'TE' && m === 0 && n === 0) { alert('TE₀₀ 模式不存在'); return; }
+    if(mode === 'TM' && (m === 0 || n === 0)) { alert('TM 模式要求 m≥1 且 n≥1'); return; }
+
+    if(mode === 'TE' && (m === 0 || n === 0)) {
+        teEFieldMode = 'arrow';
+        teEFieldModeSel.value = 'arrow';
+    }
+
+    rebuildWaveguideGeometry();
+    updatePropagationParameters();
+
+    if(mode === 'TE') {
+        infoBox.innerHTML = `<b>3D TE<sub>${m}${n}</sub> 波导电磁场（时变）</b><br>a=${a.toFixed(2)} cm, b=${b.toFixed(2)} cm, z=${L.toFixed(2)} cm｜f=${frequencyGHz.toFixed(3)} GHz｜fc=${cutoffGHz.toFixed(3)} GHz<br>鼠标拖动旋转｜滚轮缩放`;
+    } else {
+        infoBox.innerHTML = `<b>3D TM<sub>${m}${n}</sub> 波导电磁场（时变）</b><br>a=${a.toFixed(2)} cm, b=${b.toFixed(2)} cm, z=${L.toFixed(2)} cm｜f=${frequencyGHz.toFixed(3)} GHz｜fc=${cutoffGHz.toFixed(3)} GHz<br>鼠标拖动旋转｜滚轮缩放`;
+    }
+
+    time = 0;
+    if(showGridCheck.checked) createWaveguideGrid();
+    else if(waveguideGrid) { scene.remove(waveguideGrid); waveguideGrid = null; }
+    updateEField(0); updateMField(0); updateLegendVisibility();
+    if(showPoyntingCheck.checked) { clearPoyntingField(); updatePoyntingField(0); } else clearPoyntingField();
+    if(showChargeCheck.checked) { clearChargeMeshes(); createChargeMeshes(); updateChargeField(0); }
+    else clearChargeMeshes();
+    if(showCurrentCheck.checked) { clearCurrentField(); updateCurrentField(0); }
+    else clearCurrentField();
+    if(pickedPoint) updateFieldProbe(0);
+});
+
+showECheck.addEventListener('change', () => { updateLegendVisibility(); if(showECheck.checked) updateEField(omega*time); else clearEField(); });
+showMCheck.addEventListener('change', () => { updateLegendVisibility(); if(showMCheck.checked) updateMField(omega*time); else clearMField(); });
+showChargeCheck.addEventListener('change', () => {
+    updateLegendVisibility();
+    if(showChargeCheck.checked) { clearChargeMeshes(); createChargeMeshes(); updateChargeField(omega*time); }
+    else clearChargeMeshes();
+});
+showCurrentCheck.addEventListener('change', () => {
+    updateLegendVisibility();
+    if(showCurrentCheck.checked) { clearCurrentField(); updateCurrentField(omega*time); }
+    else clearCurrentField();
+});
+showPoyntingCheck.addEventListener('change', () => {
+    updateLegendVisibility();
+    if(showPoyntingCheck.checked) updatePoyntingField(omega * time);
+    else clearPoyntingField();
+});
+
+poyntingDensityInput.addEventListener('input', () => {
+    poyntingDensity = parseInt(poyntingDensityInput.value);
+    poyntingDensityVal.textContent = poyntingDensity;
+    if(showPoyntingCheck.checked) updatePoyntingField(omega * time);
+});
+poyntingLengthInput.addEventListener('input', () => {
+    poyntingLength = parseInt(poyntingLengthInput.value);
+    poyntingLengthVal.textContent = poyntingLength;
+    if(showPoyntingCheck.checked) updatePoyntingField(omega * time);
+});
+showGridCheck.addEventListener('change', () => {
+    if(showGridCheck.checked) { createWaveguideGrid(); }
+    else if(waveguideGrid) { scene.remove(waveguideGrid); waveguideGrid = null; }
+});
+
+showZSliceCheck.addEventListener('change', () => {
+    showZSlice = showZSliceCheck.checked;
+    updateLegendVisibility();
+    if(mode === 'TE' && showECheck.checked) updateEField(omega * time);
+    if(mode === 'TM' && showMCheck.checked) updateMField(omega * time);
+});
+
+zSliceInput.addEventListener('input', () => {
+    let val = parseFloat(zSliceInput.value);
+    if(isNaN(val)) val = 0;
+    val = Math.max(-L/2, Math.min(L/2, val));
+    zSliceValue = val;
+    if(showZSlice) {
+        if(mode === 'TE' && showECheck.checked) updateEField(omega * time);
+        if(mode === 'TM' && showMCheck.checked) updateMField(omega * time);
+    }
+});
+
+chargeOpacityInput.addEventListener('input', () => {
+    const val = parseFloat(chargeOpacityInput.value);
+    chargeOpacityVal.textContent = val.toFixed(2);
+    for(const item of chargeMeshes){
+        item.mesh.material.opacity = val;
+    }
+});
+
+tmDensityInput.addEventListener('input', () => {
+    tmDensity = parseInt(tmDensityInput.value);
+    tmDensityVal.textContent = tmDensity;
+    if(mode === 'TM' && showECheck.checked) updateEField(omega * time);
+});
+
+tmMDensityInput.addEventListener('input', () => {
+    tmMDensity = parseInt(tmMDensityInput.value);
+    tmMDensityVal.textContent = tmMDensity;
+    if(mode === 'TM' && showMCheck.checked) updateMField(omega * time);
+});
+
+currentDensityInput.addEventListener('input', () => {
+    currentDensity = parseInt(currentDensityInput.value);
+    currentDensityVal.textContent = currentDensity;
+    if(showCurrentCheck.checked) updateCurrentField(omega * time);
+});
+
+currentLengthInput.addEventListener('input', () => {
+    currentLength = parseInt(currentLengthInput.value);
+    currentLengthVal.textContent = currentLength;
+    if(showCurrentCheck.checked) updateCurrentField(omega * time);
+});
+
+// 修改：只更新侧面材质（index 0-3），两端开口（index 4-5）始终保持透明
+wallOpacityInput.addEventListener('input', () => {
+    wallOpacity = parseFloat(wallOpacityInput.value);
+    wallOpacityVal.textContent = wallOpacity.toFixed(2);
+    if(Array.isArray(waveguide.material)){
+        for(let i = 0; i < 4; i++){
+            waveguide.material[i].opacity = wallOpacity;
+        }
+    }
+});
+
+teEDensityInput.addEventListener('input', () => {
+    teEDensity = parseInt(teEDensityInput.value);
+    teEDensityVal.textContent = teEDensity;
+    if(mode === 'TE' && showECheck.checked) updateEField(omega * time);
+});
+
+teELengthInput.addEventListener('input', () => {
+    teELength = parseInt(teELengthInput.value);
+    teELengthVal.textContent = teELength;
+    if(mode === 'TE' && showECheck.checked) updateEField(omega * time);
+});
+
+teMDensityInput.addEventListener('input', () => {
+    teMDensity = parseInt(teMDensityInput.value);
+    teMDensityVal.textContent = teMDensity;
+    if(mode === 'TE' && showMCheck.checked) updateMField(omega * time);
+});
+
+teEFieldModeSel.addEventListener('change', () => {
+    teEFieldMode = teEFieldModeSel.value;
+    updateLegendVisibility();
+    if(mode === 'TE' && showECheck.checked) updateEField(omega * time);
+});
+
+let pickedPoint = null;
+let probeMarker = null;
+let probeEArrow = null;
+let probeHArrow = null;
+let probeJArrow = null;
+let probeSArrow = null;
+let probeAxes = null;
+let probeGridBox = null;
+let waveguideGrid = null;
+
+function setPickedPoint(p) {
+    clearPickedPoint();
+    pickedPoint = p.clone();
+
+    const markerGeo = new THREE.SphereGeometry(0.08, 16, 16);
+    const markerMat = new THREE.MeshBasicMaterial({color: 0xffffff});
+    probeMarker = new THREE.Mesh(markerGeo, markerMat);
+    probeMarker.position.copy(p);
+    scene.add(probeMarker);
+
+    updateLegendVisibility(); // 显示探针图例
+    updateFieldProbe(omega * time);
+}
+
+function disposeArrowHelper(arrow) {
+    if(!arrow) return;
+    scene.remove(arrow);
+    if(arrow.line) { arrow.line.geometry.dispose(); arrow.line.material.dispose(); }
+    if(arrow.cone) { arrow.cone.geometry.dispose(); arrow.cone.material.dispose(); }
+}
+
+function updateFieldProbe(phase) {
+    if(!pickedPoint) return;
+    const x = pickedPoint.x, y = pickedPoint.y, z = pickedPoint.z;
+
+    let ex, ey, ez, eMag;
+    if(mode === 'TE') {
+        ex = Ex_TE(x,y,z,phase);
+        ey = Ey_TE(x,y,z,phase);
+        ez = 0;
+        eMag = Emag_TE(x,y,z,phase);
+    } else {
+        ex = Ex_TM(x,y,z,phase);
+        ey = Ey_TM(x,y,z,phase);
+        ez = Ez_TM(x,y,z,phase);
+        eMag = Emag_TM(x,y,z,phase);
+    }
+
+    let hx, hy, hz, hMag;
+    if(mode === 'TE') {
+        hx = Hx_TE(x,y,z,phase);
+        hy = Hy_TE(x,y,z,phase);
+        hz = Hz_TE(x,y,z,phase);
+        hMag = Hmag_TE(x,y,z,phase);
+    } else {
+        hx = Hx_TM(x,y,z,phase);
+        hy = Hy_TM(x,y,z,phase);
+        hz = 0;
+        hMag = Hmag_TM(x,y,z,phase);
+    }
+
+    const eVec = new THREE.Vector3(ex, ey, ez);
+    const hVec = new THREE.Vector3(hx, hy, hz);
+
+    // 计算坡印廷矢量 S = E × H
+    const sVec = new THREE.Vector3().crossVectors(eVec, hVec);
+    const sMag = sVec.length();
+
+    disposeArrowHelper(probeEArrow); probeEArrow = null;
+    disposeArrowHelper(probeHArrow); probeHArrow = null;
+    disposeArrowHelper(probeJArrow); probeJArrow = null;
+    disposeArrowHelper(probeSArrow); probeSArrow = null;
+
+    if(eMag > 0.005) {
+        const eDir = eVec.clone().normalize();
+        const eLen = Math.min(eMag * 2.5, 3.0);
+        probeEArrow = new THREE.ArrowHelper(eDir, pickedPoint, eLen, 0xff4444, 0.18, 0.09);
+        probeEArrow.line.renderOrder = 20;
+        probeEArrow.cone.renderOrder = 20;
+        scene.add(probeEArrow);
+    }
+
+    if(hMag > 0.005) {
+        const hDir = hVec.clone().normalize();
+        const hLen = Math.min(hMag * 2.5, 3.0);
+        probeHArrow = new THREE.ArrowHelper(hDir, pickedPoint, hLen, 0x44aaff, 0.18, 0.09);
+        probeHArrow.line.renderOrder = 20;
+        probeHArrow.cone.renderOrder = 20;
+        scene.add(probeHArrow);
+    }
+
+    // 坡印廷矢量箭头（固定颜色，不随大小变化）
+    if(sMag > 0.005) {
+        const sDir = sVec.clone().normalize();
+        const sLen = Math.min(sMag * 2.5, 3.0);
+        probeSArrow = new THREE.ArrowHelper(sDir, pickedPoint, sLen, 0xff3399, 0.18, 0.09);
+        probeSArrow.line.renderOrder = 20;
+        probeSArrow.cone.renderOrder = 20;
+        scene.add(probeSArrow);
+    }
+
+    const tol = 0.06;
+    const onLeft = Math.abs(x - (-a/2)) < tol;
+    const onRight = Math.abs(x - a/2) < tol;
+    const onBottom = Math.abs(y - 0) < tol;
+    const onTop = Math.abs(y - b) < tol;
+    const onSurface = onLeft || onRight || onBottom || onTop;
+
+    if(probeMarker) {
+        if(onSurface) {
+            let sigma = 0;
+            let maxSigma = 1;
+            if(mode === 'TE') {
+                if(onLeft || onRight) {
+                    const exVal = Ex_TE(x, y, z, phase);
+                    sigma = onLeft ? exVal : -exVal;
+                    maxSigma = 1;
+                } else {
+                    const eyVal = Ey_TE(x, y, z, phase);
+                    sigma = onBottom ? eyVal : -eyVal;
+                    maxSigma = 1;
+                }
+            } else {
+                const kc2 = get_kc2(), scale = beta/kc2;
+                const mPIa = Math.PI*m/a, nPIb = Math.PI*n/b;
+                if(onLeft || onRight) {
+                    const exVal = -scale * mPIa * Math.cos(mPIa*(x+a/2)) * Math.sin(nPIb*y) * Math.sin(phase - beta*z);
+                    sigma = onLeft ? exVal : -exVal;
+                    maxSigma = scale * mPIa;
+                } else {
+                    const eyVal = -scale * nPIb * Math.sin(mPIa*(x+a/2)) * Math.cos(nPIb*y) * Math.sin(phase - beta*z);
+                    sigma = onBottom ? eyVal : -eyVal;
+                    maxSigma = scale * nPIb;
+                }
+            }
+            if(maxSigma < 1e-6) maxSigma = 1;
+            const t = 0.5 + 0.5 * (sigma / maxSigma);
+            const clampedT = Math.max(0, Math.min(1, t));
+            const color = bwrColor(clampedT);
+            probeMarker.material.color.setRGB(color.r/255, color.g/255, color.b/255);
+            const scaleFactor = 1 + 1.2 * Math.abs(sigma) / maxSigma;
+            probeMarker.scale.setScalar(scaleFactor);
+        } else {
+            probeMarker.material.color.setHex(0xffffff);
+            probeMarker.scale.setScalar(1);
+        }
+    }
+
+    if(onSurface) {
+        let jx = 0, jy = 0, jz = 0, jMag = 0;
+        if(mode === 'TE') {
+            const hxVal = Hx_TE(x,y,z,phase), hyVal = Hy_TE(x,y,z,phase), hzVal = Hz_TE(x,y,z,phase);
+            if(onLeft) { jx = 0; jy = -hzVal; jz = hyVal; }
+            else if(onRight) { jx = 0; jy = hzVal; jz = -hyVal; }
+            else if(onBottom) { jx = hzVal; jy = 0; jz = -hxVal; }
+            else if(onTop) { jx = -hzVal; jy = 0; jz = hxVal; }
+        } else {
+            const hxVal = Hx_TM(x,y,z,phase), hyVal = Hy_TM(x,y,z,phase);
+            if(onLeft) { jx = 0; jy = 0; jz = hyVal; }
+            else if(onRight) { jx = 0; jy = 0; jz = -hyVal; }
+            else if(onBottom) { jx = 0; jy = 0; jz = -hxVal; }
+            else if(onTop) { jx = 0; jy = 0; jz = hxVal; }
+        }
+        jMag = Math.sqrt(jx*jx + jy*jy + jz*jz);
+        if(jMag > 0.01) {
+            const jDir = new THREE.Vector3(jx, jy, jz).normalize();
+            const jLen = Math.min(jMag * 1.2, 2.0);
+            const jColor = getCurrentColor(jMag, 1.5);
+            probeJArrow = new THREE.ArrowHelper(jDir, pickedPoint, jLen, jColor, 0.2, 0.1);
+            probeJArrow.line.renderOrder = 20;
+            probeJArrow.cone.renderOrder = 20;
+            scene.add(probeJArrow);
+        }
+    }
+}
+
+function clearPickedPoint() {
+    if(probeMarker) {
+        scene.remove(probeMarker);
+        probeMarker.geometry.dispose();
+        probeMarker.material.dispose();
+        probeMarker = null;
+    }
+    if(probeAxes) {
+        scene.remove(probeAxes);
+        probeAxes.traverse((obj) => {
+            if(obj.geometry) obj.geometry.dispose();
+            if(obj.material) {
+                if(Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+                else obj.material.dispose();
+            }
+        });
+        probeAxes = null;
+    }
+    if(probeGridBox) {
+        scene.remove(probeGridBox);
+        probeGridBox.geometry.dispose();
+        probeGridBox.material.dispose();
+        probeGridBox = null;
+    }
+    disposeArrowHelper(probeEArrow); probeEArrow = null;
+    disposeArrowHelper(probeHArrow); probeHArrow = null;
+    disposeArrowHelper(probeJArrow); probeJArrow = null;
+    disposeArrowHelper(probeSArrow); probeSArrow = null;
+    pickedPoint = null;
+    updateLegendVisibility(); // 隐藏探针图例
+}
+
+updateProbeBtn.addEventListener('click', () => {
+    const x = parseFloat(probeXInput.value);
+    const y = parseFloat(probeYInput.value);
+    const z = parseFloat(probeZInput.value);
+
+    if(isNaN(x) || isNaN(y) || isNaN(z)) {
+        alert('请输入有效的数字坐标');
+        return;
+    }
+    if(x < -a/2 || x > a/2 || y < 0 || y > b || z < -L/2 || z > L/2) {
+        alert(`坐标超出波导范围！\n有效范围：x∈[${-a/2}, ${a/2}], y∈[0, ${b}], z∈[${-L/2}, ${L/2}]`);
+        return;
+    }
+
+    setPickedPoint(new THREE.Vector3(x, y, z));
+});
+
+clearPickBtn.addEventListener('click', () => {
+    clearPickedPoint();
+});
+
+function Ey_TE(x, y, z, phase) {
+    return Math.sin(Math.PI*m*(x+a/2)/a) * Math.cos(Math.PI*n*y/b) * Math.sin(phase - beta*z);
+}
+function Ex_TE(x, y, z, phase) {
+    if (n === 0) return 0;
+    return -Math.cos(Math.PI*m*(x+a/2)/a) * Math.sin(Math.PI*n*y/b) * Math.sin(phase - beta*z);
+}
+function Hx_TE(x, y, z, phase) {
+    if (m === 0) return 0;
+    const kc2 = get_kc2();
+    const scale = beta / kc2;
+    return -scale * (Math.PI*m/a) * Math.sin(Math.PI*m*(x+a/2)/a) * Math.cos(Math.PI*n*y/b) * Math.sin(phase - beta*z);
+}
+function Hy_TE(x, y, z, phase) {
+    if (n === 0) return 0;
+    const kc2 = get_kc2();
+    const scale = beta / kc2;
+    return -scale * (Math.PI*n/b) * Math.cos(Math.PI*m*(x+a/2)/a) * Math.sin(Math.PI*n*y/b) * Math.sin(phase - beta*z);
+}
+function Hz_TE(x, y, z, phase) {
+    return Math.cos(Math.PI*m*(x+a/2)/a) * Math.cos(Math.PI*n*y/b) * Math.cos(phase - beta*z);
+}
+function Hmag_TE(x, y, z, phase) {
+    const hx = Hx_TE(x,y,z,phase), hy = Hy_TE(x,y,z,phase), hz = Hz_TE(x,y,z,phase);
+    return Math.sqrt(hx*hx + hy*hy + hz*hz);
+}
+function Emag_TE(x, y, z, phase) {
+    const ex = Ex_TE(x,y,z,phase), ey = Ey_TE(x,y,z,phase);
+    return Math.sqrt(ex*ex + ey*ey);
+}
+
+function Ez_TM(x, y, z, phase) {
+    return Math.sin(Math.PI*m*(x+a/2)/a) * Math.sin(Math.PI*n*y/b) * Math.cos(phase - beta*z);
+}
+function get_kc2() { return Math.pow(Math.PI*m/a,2) + Math.pow(Math.PI*n/b,2); }
+function Ex_TM(x, y, z, phase) {
+    const kc2 = get_kc2(), scale = beta/kc2;
+    return scale*(Math.PI*m/a) * Math.cos(Math.PI*m*(x+a/2)/a) * Math.sin(Math.PI*n*y/b) * Math.sin(phase - beta*z);
+}
+function Ey_TM(x, y, z, phase) {
+    const kc2 = get_kc2(), scale = beta/kc2;
+    return scale*(Math.PI*n/b) * Math.sin(Math.PI*m*(x+a/2)/a) * Math.cos(Math.PI*n*y/b) * Math.sin(phase - beta*z);
+}
+function Emag_TM(x, y, z, phase) {
+    const ex=Ex_TM(x,y,z,phase), ey=Ey_TM(x,y,z,phase), ez=Ez_TM(x,y,z,phase);
+    return Math.sqrt(ex*ex+ey*ey+ez*ez);
+}
+function Hx_TM(x, y, z, phase) {
+    return -Math.sin(Math.PI*m*(x+a/2)/a) * Math.cos(Math.PI*n*y/b) * Math.sin(phase - beta*z);
+}
+function Hy_TM(x, y, z, phase) {
+    return Math.cos(Math.PI*m*(x+a/2)/a) * Math.sin(Math.PI*n*y/b) * Math.sin(phase - beta*z);
+}
+function Hmag_TM(x, y, z, phase) {
+    const hx=Hx_TM(x,y,z,phase), hy=Hy_TM(x,y,z,phase);
+    return Math.sqrt(hx*hx+hy*hy);
+}
+
+function getEFieldColor(val, maxVal) {
+    const t = Math.min(val/maxVal, 1.0);
+    return new THREE.Color().setHSL(0.18 * (1 - t), 1.0, 0.5);
+}
+function getMFieldColor(val, maxVal) {
+    const t = Math.min(val/maxVal, 1.0);
+    return new THREE.Color().setHSL(0.55 + t*0.25, 1.0, 0.5);
+}
+function getCurrentColor(val, maxVal) {
+    const t = Math.min(val/maxVal, 1.0);
+    return new THREE.Color().setHSL(0.35, 1.0, 0.84 - t*0.72);
+}
+
+let eObjects = [];
+function clearEField() {
+    for(const obj of eObjects) {
+        scene.remove(obj);
+        if(obj.geometry) obj.geometry.dispose();
+        if(obj.line && obj.line.geometry) obj.line.geometry.dispose();
+        if(obj.cone && obj.cone.geometry) obj.cone.geometry.dispose();
+    }
+    eObjects = [];
+}
+
+function integrateFieldLine_E(startX, startY, startZ, steps, stepSize, phase, isTE, globalMaxE) {
+    let pts = [], x = startX, y = startY, z = startZ;
+    const eThreshold = globalMaxE * 0.02;
+    for(let i = 0; i < steps; i++){
+        if(x < -a/2 + 0.02 || x > a/2 - 0.02 || y < 0.02 || y > b - 0.02 || z < -L/2 - 0.5 || z > L/2 + 0.5) break;
+        pts.push(new THREE.Vector3(x, y, z));
+        let ex, ey, ez;
+        if(isTE) {
+            ex = Ex_TE(x,y,z,phase);
+            ey = Ey_TE(x,y,z,phase);
+            ez = 0;
+        } else {
+            ex = Ex_TM(x,y,z,phase);
+            ey = Ey_TM(x,y,z,phase);
+            ez = Ez_TM(x,y,z,phase);
+        }
+        let eMag = Math.sqrt(ex*ex + ey*ey + ez*ez);
+        if(eMag < 1e-5 || eMag < eThreshold) break;
+        x += stepSize * ex / eMag;
+        y += stepSize * ey / eMag;
+        z += stepSize * ez / eMag;
+    }
+    if(stepSize < 0) pts.reverse();
+    return pts;
+}
+
+function drawFieldLineWithColor(pts, phase, globalMaxE, isTE) {
+    if(pts.length < 4) return;
+    let inPts = [];
+    for(let i = 0; i < pts.length; i++){
+        const p = pts[i];
+        if(p.x >= -a/2 && p.x <= a/2 && p.y >= 0 && p.y <= b && p.z >= -L/2 && p.z <= L/2) {
+            inPts.push(p);
+        }
+    }
+    if(inPts.length < 4) return;
+
+    const colors = [];
+    for(let i = 0; i < inPts.length; i++){
+        const p = inPts[i];
+        const eMag = isTE ? Emag_TE(p.x,p.y,p.z,phase) : Emag_TM(p.x,p.y,p.z,phase);
+        const color = getEFieldColor(eMag, globalMaxE);
+        colors.push(color.r, color.g, color.b);
+    }
+    const g = new THREE.BufferGeometry().setFromPoints(inPts);
+    g.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    const line = new THREE.Line(g, new THREE.LineBasicMaterial({vertexColors: true, linewidth: 2}));
+    line.renderOrder = 15;
+    scene.add(line);
+    eObjects.push(line);
+
+    for(let i = 4; i < inPts.length - 4; i += 14){
+        if(i + 2 >= inPts.length) break;
+        let p0 = inPts[i], p1 = inPts[i + 2];
+        let dir = p1.clone().sub(p0).normalize();
+        if(dir.length() > 0.1){
+            const eMag = isTE ? Emag_TE(p0.x,p0.y,p0.z,phase) : Emag_TM(p0.x,p0.y,p0.z,phase);
+            const arrowScale = 0.5 + 0.5 * (eMag / globalMaxE);
+            const arrowColor = getEFieldColor(eMag, globalMaxE);
+            const arrow = new THREE.ArrowHelper(dir, p0, 0.22 * arrowScale, arrowColor, 0.09 * arrowScale, 0.045 * arrowScale);
+            arrow.line.renderOrder = 15;
+            arrow.cone.renderOrder = 15;
+            scene.add(arrow);
+            eObjects.push(arrow);
+        }
+    }
+}
+
+function drawEField_TE_arrow(phase) {
+    clearEField();
+    let globalMaxE = 0;
+    const sampleStep = 0.3;
+    for (let z = -L/2; z <= L/2; z += sampleStep) {
+        for (let y = 0.1; y <= b - 0.1; y += sampleStep) {
+            for (let x = -a/2 + 0.1; x <= a/2 - 0.1; x += sampleStep) {
+                globalMaxE = Math.max(globalMaxE, Emag_TE(x, y, z, phase));
+            }
+        }
+    }
+    if (globalMaxE < 0.01) return;
+
+    const densityFactor = teEDensity / 5;
+    const yStep = Math.max(0.7 / densityFactor, 0.06);
+    const xStep = Math.max(1.2 / densityFactor, 0.1);
+    const maxLen = 0.16 * teELength;
+
+    let zPositions = [];
+    if (showZSlice) {
+        zPositions = [Math.max(-L/2 + 0.1, Math.min(L/2 - 0.1, zSliceValue))];
+    } else {
+        const zStep = Math.max(1.8 / densityFactor, 0.3);
+        for (let z = -L/2 + 0.5; z <= L/2 - 0.5; z += zStep) {
+            zPositions.push(z);
+        }
+    }
+
+    for (const z of zPositions) {
+        for (let y = 0.25; y <= b - 0.25; y += yStep) {
+            for (let x = -a/2 + 0.4; x <= a/2 - 0.4; x += xStep) {
+                const ex = Ex_TE(x, y, z, phase);
+                const ey = Ey_TE(x, y, z, phase);
+                const eMag = Math.sqrt(ex*ex + ey*ey);
+                if (eMag < globalMaxE * 0.05) continue;
+
+                const dir = new THREE.Vector3(ex, ey, 0).normalize();
+                const len = maxLen * (eMag / globalMaxE);
+                const color = getEFieldColor(eMag, globalMaxE);
+
+                const headLen = Math.max(0.08, 0.2 * len);
+                const headWidth = headLen * 0.5;
+                const arrow = new THREE.ArrowHelper(
+                    dir,
+                    new THREE.Vector3(x, y, z),
+                    len,
+                    color,
+                    headLen,
+                    headWidth
+                );
+                arrow.line.renderOrder = 15;
+                arrow.cone.renderOrder = 15;
+                scene.add(arrow);
+                eObjects.push(arrow);
+            }
+        }
+    }
+}
+
+function updateEField_TM(phase){
+    clearEField();
+    let globalMaxE = 0;
+
+    const densityFactor = tmDensity / 5;
+    const sampleXStep = 0.25 / densityFactor;
+    const sampleYStep = 0.15 / densityFactor;
+    const sampleZStep = 0.8 / densityFactor;
+
+    for(let z = -L/2; z <= L/2; z += Math.max(sampleZStep, 0.4)){
+        for(let y = 0.08; y <= b - 0.08; y += Math.max(sampleYStep, 0.08)){
+            for(let x = -a/2 + 0.08; x <= a/2 - 0.08; x += Math.max(sampleXStep, 0.12)){
+                globalMaxE = Math.max(globalMaxE, Emag_TM(x,y,z,phase));
+            }
+        }
+    }
+    if(globalMaxE < 0.01) return;
+
+    const seeds = [];
+    const zStep = 0.8;
+
+    const xStep = Math.max(0.4 / densityFactor, 0.15);
+    const yStep = Math.max(0.25 / densityFactor, 0.08);
+    const threshold = Math.max(0.06 / densityFactor, 0.015);
+    const minDist = Math.max(0.25 / densityFactor, 0.08);
+
+    for(let z = -L/2 + zStep/2; z <= L/2 - zStep/2; z += zStep){
+        for(let y = 0.08; y <= b - 0.08; y += 0.12){
+            seeds.push({x: -a/2 + 0.05, y, z, dir: 1});
+            seeds.push({x: a/2 - 0.05, y, z, dir: -1});
+        }
+    }
+    for(let z = -L/2 + zStep/2; z <= L/2 - zStep/2; z += zStep){
+        for(let x = -a/2 + 0.15; x <= a/2 - 0.15; x += 0.25){
+            seeds.push({x, y: 0.05, z, dir: 1});
+            seeds.push({x, y: b - 0.05, z, dir: -1});
+        }
+    }
+
+    // 导管边缘（角线）种子点
+    for(let z = -L/2 + zStep/2; z <= L/2 - zStep/2; z += zStep){
+        seeds.push({x: -a/2 + 0.05, y: 0.05, z, dir: 1});
+        seeds.push({x: -a/2 + 0.05, y: b - 0.05, z, dir: 1});
+        seeds.push({x: a/2 - 0.05, y: 0.05, z, dir: -1});
+        seeds.push({x: a/2 - 0.05, y: b - 0.05, z, dir: -1});
+    }
+
+    // z方向端面边缘种子点
+    for(let y = 0.08; y <= b - 0.08; y += 0.15){
+        for(let x = -a/2 + 0.1; x <= a/2 - 0.1; x += 0.2){
+            seeds.push({x, y, z: -L/2 + 0.05, dir: 1});
+            seeds.push({x, y, z: L/2 - 0.05, dir: -1});
+        }
+    }
+
+    for(let z = -L/2 + zStep/2; z <= L/2 - zStep/2; z += zStep){
+        for(let y = 0.12; y <= b - 0.12; y += yStep){
+            for(let x = -a/2 + 0.15; x <= a/2 - 0.15; x += xStep){
+                if(Emag_TM(x,y,z,phase) > globalMaxE * threshold){
+                    seeds.push({x, y, z, dir: 0});
+                }
+            }
+        }
+    }
+
+    if(tmDensity >= 5){
+        const extraFactor = Math.min((tmDensity - 3) / 5, 1.5);
+        const extraXStep = Math.max(0.15 / extraFactor, 0.08);
+        const extraYStep = Math.max(0.12 / extraFactor, 0.06);
+        const extraThreshold = Math.max(0.03 / extraFactor, 0.01);
+
+        for(let z = -L/2 + zStep/2; z <= L/2 - zStep/2; z += zStep){
+            for(let y = 0.1; y <= b - 0.1; y += extraYStep){
+                for(let x = -0.25; x <= 0.25; x += extraXStep){
+                    if(Emag_TM(x,y,z,phase) > globalMaxE * extraThreshold){
+                        seeds.push({x, y, z, dir: 0});
+                    }
+                }
+            }
+            for(let x = -a/2 + 0.1; x <= a/2 - 0.1; x += extraXStep * 1.5){
+                for(let y = b/2 - 0.25; y <= b/2 + 0.25; y += extraYStep){
+                    if(Emag_TM(x,y,z,phase) > globalMaxE * extraThreshold){
+                        seeds.push({x, y, z, dir: 0});
+                    }
+                }
+            }
+        }
+    }
+
+    const filtered = [];
+    for(const p of seeds){
+        let tooClose = false;
+        for(const fp of filtered){
+            if(Math.sqrt((p.x-fp.x)**2 + (p.y-fp.y)**2 + (p.z-fp.z)**2) < minDist){ tooClose = true; break; }
+        }
+        if(!tooClose) filtered.push(p);
+    }
+
+    for(const sp of filtered){
+        let allPts = [];
+        if(sp.dir === 0){
+            let fwd = integrateFieldLine_E(sp.x, sp.y, sp.z, 80, 0.1, phase, false, globalMaxE);
+            let bwd = integrateFieldLine_E(sp.x, sp.y, sp.z, 80, -0.1, phase, false, globalMaxE);
+            for(let i = 0; i < bwd.length - 1; i++) allPts.push(bwd[i]);
+            allPts.push(new THREE.Vector3(sp.x, sp.y, sp.z));
+            for(let i = 1; i < fwd.length; i++) allPts.push(fwd[i]);
+        } else {
+            allPts = integrateFieldLine_E(sp.x, sp.y, sp.z, 120, 0.08 * sp.dir, phase, false, globalMaxE);
+        }
+        drawFieldLineWithColor(allPts, phase, globalMaxE, false);
+    }
+}
+
+function drawEField_TE_fieldline(phase) {
+    let globalMaxE = 0;
+    for(let z = -L/2; z <= L/2; z += 0.6){
+        for(let y = 0.1; y <= b - 0.1; y += 0.2){
+            for(let x = -a/2 + 0.1; x <= a/2 - 0.1; x += 0.3){
+                globalMaxE = Math.max(globalMaxE, Emag_TE(x,y,z,phase));
+            }
+        }
+    }
+    if(globalMaxE < 0.01) return;
+
+    const seeds = [];
+    let zList = [];
+    if (showZSlice) {
+        zList = [Math.max(-L/2 + 0.3, Math.min(L/2 - 0.3, zSliceValue))];
+    } else {
+        const zStep = 0.8;
+        for(let z = -L/2 + 0.3; z <= L/2 - 0.3; z += zStep) zList.push(z);
+    }
+
+    for(const z of zList) {
+        for(let y = 0.1; y <= b - 0.1; y += 0.15){
+            if(n > 0) {
+                const exL = Ex_TE(-a/2 + 0.03, y, z, phase);
+                seeds.push({x: -a/2 + 0.03, y, z, dir: (exL >= 0 ? 1 : -1)});
+                const exR = Ex_TE(a/2 - 0.03, y, z, phase);
+                seeds.push({x: a/2 - 0.03, y, z, dir: (exR <= 0 ? 1 : -1)});
+            }
+        }
+    }
+
+    for(const z of zList) {
+        for(let x = -a/2 + 0.2; x <= a/2 - 0.2; x += 0.3){
+            if(m > 0) {
+                const eyB = Ey_TE(x, 0.03, z, phase);
+                seeds.push({x, y: 0.03, z, dir: (eyB >= 0 ? 1 : -1)});
+                const eyT = Ey_TE(x, b - 0.03, z, phase);
+                seeds.push({x, y: b - 0.03, z, dir: (eyT <= 0 ? 1 : -1)});
+            }
+        }
+    }
+
+    // 导管边缘（角线）种子点
+    for(const z of zList) {
+        const exBL = Ex_TE(-a/2 + 0.03, 0.03, z, phase);
+        seeds.push({x: -a/2 + 0.03, y: 0.03, z, dir: (exBL >= 0 && m > 0 ? 1 : -1)});
+        const exTL = Ex_TE(-a/2 + 0.03, b - 0.03, z, phase);
+        seeds.push({x: -a/2 + 0.03, y: b - 0.03, z, dir: (exTL >= 0 && m > 0 ? 1 : -1)});
+        const exBR = Ex_TE(a/2 - 0.03, 0.03, z, phase);
+        seeds.push({x: a/2 - 0.03, y: 0.03, z, dir: (exBR <= 0 && m > 0 ? 1 : -1)});
+        const exTR = Ex_TE(a/2 - 0.03, b - 0.03, z, phase);
+        seeds.push({x: a/2 - 0.03, y: b - 0.03, z, dir: (exTR <= 0 && m > 0 ? 1 : -1)});
+    }
+
+    // z方向端面边缘种子点
+    if (!showZSlice) {
+        for(let y = 0.1; y <= b - 0.1; y += 0.2){
+            for(let x = -a/2 + 0.1; x <= a/2 - 0.1; x += 0.3){
+                const ezL = Ey_TE(x, y, -L/2 + 0.03, phase);
+                seeds.push({x, y, z: -L/2 + 0.03, dir: (ezL >= 0 ? 1 : -1)});
+                const ezR = Ey_TE(x, y, L/2 - 0.03, phase);
+                seeds.push({x, y, z: L/2 - 0.03, dir: (ezR <= 0 ? 1 : -1)});
+            }
+        }
+    }
+
+    const zInternalList = showZSlice ? zList : [];
+    if (!showZSlice) {
+        for(let z = -L/2 + 0.5; z <= L/2 - 0.5; z += 1.2) zInternalList.push(z);
+    }
+    for(const z of zInternalList) {
+        for(let y = 0.2; y <= b - 0.2; y += 0.3){
+            for(let x = -a/2 + 0.3; x <= a/2 - 0.3; x += 0.5){
+                if(Emag_TE(x,y,z,phase) > globalMaxE * 0.1){
+                    seeds.push({x, y, z, dir: 0});
+                }
+            }
+        }
+    }
+
+    const minDist = 0.25;
+    const filtered = [];
+    for(const p of seeds){
+        let tooClose = false;
+        for(const fp of filtered){
+            if(Math.sqrt((p.x-fp.x)**2 + (p.y-fp.y)**2 + (p.z-fp.z)**2) < minDist){ tooClose = true; break; }
+        }
+        if(!tooClose) filtered.push(p);
+    }
+
+    for(const sp of filtered){
+        let allPts = [];
+        if(sp.dir === 0){
+            let fwd = integrateFieldLine_E(sp.x, sp.y, sp.z, 80, 0.1, phase, true, globalMaxE);
+            let bwd = integrateFieldLine_E(sp.x, sp.y, sp.z, 80, -0.1, phase, true, globalMaxE);
+            for(let i = 0; i < bwd.length - 1; i++) allPts.push(bwd[i]);
+            allPts.push(new THREE.Vector3(sp.x, sp.y, sp.z));
+            for(let i = 1; i < fwd.length; i++) allPts.push(fwd[i]);
+        } else {
+            allPts = integrateFieldLine_E(sp.x, sp.y, sp.z, 120, 0.08 * sp.dir, phase, true, globalMaxE);
+        }
+        drawFieldLineWithColor(allPts, phase, globalMaxE, true);
+    }
+}
+
+function updateEField_TE(phase) {
+    clearEField();
+    if (m === 0 || n === 0 || teEFieldMode === 'arrow') {
+        drawEField_TE_arrow(phase);
+    } else {
+        drawEField_TE_fieldline(phase);
+    }
+}
+
+function updateEField(phase){
+    if(!showECheck.checked) return;
+    if(mode==='TE') updateEField_TE(phase);
+    else updateEField_TM(phase);
+}
+
+let mLines=[], mArrows=[];
+function clearMField(){
+    for(const line of mLines){scene.remove(line); line.geometry.dispose();}
+    mLines=[];
+    for(const arrow of mArrows){
+        scene.remove(arrow);
+        if(arrow.line&&arrow.line.geometry) arrow.line.geometry.dispose();
+        if(arrow.cone&&arrow.cone.geometry) arrow.cone.geometry.dispose();
+    }
+    mArrows=[];
+}
+
+function integrateFieldLine_TE_m0(sx,sz,steps,step,phase,y0){
+    let pts=[], x=sx,z=sz;
+    const zMin=-L/2-1, zMax=L/2+1;
+    for(let i=0; i < steps; i++){
+        if(x < -a/2+0.05 || x > a/2-0.05 || z < zMin+0.05 || z > zMax+0.05) break;
+        pts.push(new THREE.Vector3(x,y0,z));
+        let hx=Hx_TE(x,y0,z,phase), hz=Hz_TE(x,y0,z,phase);
+        let hMag=Math.sqrt(hx*hx+hz*hz);
+        if(hMag < 1e-6) break;
+        x += step*hx/hMag; z += step*hz/hMag;
+    }
+    return pts;
+}
+
+function integrateFieldLine_TE_3D(sx,sy,sz,steps,step,phase){
+    let pts=[], x=sx,y=sy,z=sz;
+    for(let i=0; i < steps; i++){
+        if(x < -a/2+0.05 || x > a/2-0.05 || y < 0.05 || y > b-0.05 || z < -L/2-4 || z > L/2+4) break;
+        pts.push(new THREE.Vector3(x,y,z));
+        let hx=Hx_TE(x,y,z,phase), hy=Hy_TE(x,y,z,phase), hz=Hz_TE(x,y,z,phase);
+        let hMag=Math.sqrt(hx*hx+hy*hy+hz*hz);
+        if(hMag < 1e-6) break;
+        x += step*hx/hMag; y += step*hy/hMag; z += step*hz/hMag;
+    }
+    return pts;
+}
+
+function integrateFieldLine_TM(sx,sy,steps,step,phase,z0){
+    let pts=[], x=sx,y=sy;
+    for(let i=0; i < steps; i++){
+        if(x < -a/2+0.05 || x > a/2-0.05 || y < 0.05 || y > b-0.05) break;
+        pts.push(new THREE.Vector3(x,y,z0));
+        let hx=Hx_TM(x,y,z0,phase), hy=Hy_TM(x,y,z0,phase);
+        let hMag=Math.sqrt(hx*hx+hy*hy);
+        if(hMag < 1e-6) break;
+        x += step*hx/hMag; y += step*hy/hMag;
+    }
+    return pts;
+}
+
+function drawMagneticFieldLines_TE_m0(y0,phase,globalMaxH, density){
+    const densityFactor = density / 5;
+    const nx = Math.max(Math.floor(10 * densityFactor), 5);
+    const nz = Math.max(Math.floor(20 * densityFactor), 8);
+    const dx = a / nx, dz = L / nz;
+    if(globalMaxH < 0.01) return;
+    const candidates=[];
+    for(let i=0; i <= nx; i++) for(let j=0; j <= nz; j++){
+        const x=-a/2+i*dx, z=-L/2+j*dz;
+        if(x >= -a/2+0.05 && x <= a/2-0.05 && z >= -L/2+0.05 && z <= L/2-0.05) candidates.push({x,z});
+    }
+    const wallStep = Math.max(1.6 / densityFactor, 0.4);
+    for(let z=-L/2+0.3; z <= L/2-0.3; z += wallStep){
+        candidates.push({x:-a/2+0.05,z}); candidates.push({x:a/2-0.05,z});
+    }
+    const minDist = Math.max(0.7 / densityFactor, 0.25);
+    const filtered=[];
+    for(const p of candidates){
+        let tooClose=false;
+        for(const fp of filtered) if(Math.sqrt((p.x-fp.x)**2+(p.z-fp.z)**2) < minDist){tooClose=true;break;}
+        if(!tooClose) filtered.push(p);
+    }
+    for(const sp of filtered){
+        let fwd=integrateFieldLine_TE_m0(sp.x,sp.z,300,0.08,phase,y0);
+        let bwd=integrateFieldLine_TE_m0(sp.x,sp.z,300,-0.08,phase,y0);
+        let allPts=[];
+        for(let i=bwd.length-1; i >= 0; i--) allPts.push(bwd[i]);
+        for(let i=1; i < fwd.length; i++) allPts.push(fwd[i]);
+
+        let segs=[], cur=[];
+        for(let i=0; i < allPts.length; i++){
+            const p = allPts[i];
+            const inRange = p.x >= -a/2 && p.x <= a/2 && p.z >= -L/2 && p.z <= L/2;
+            if(inRange){
+                if(cur.length > 0){
+                    const last = cur[cur.length-1];
+                    const dist = Math.sqrt((p.x-last.x)**2 + (p.z-last.z)**2);
+                    if(dist > 0.6){
+                        segs.push(cur);
+                        cur = [];
+                    }
+                }
+                cur.push(p);
+            } else if(cur.length > 0){
+                segs.push(cur);
+                cur=[];
+            }
+        }
+        if(cur.length > 0) segs.push(cur);
+
+        for(const seg of segs){
+            if(seg.length < 2) continue;
+            const colors=[];
+            for(let i=0; i < seg.length; i++){
+                const c=getMFieldColor(Hmag_TE(seg[i].x,y0,seg[i].z,phase),globalMaxH);
+                colors.push(c.r,c.g,c.b);
+            }
+            const g=new THREE.BufferGeometry().setFromPoints(seg);
+            g.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+            const line=new THREE.Line(g,new THREE.LineBasicMaterial({vertexColors:true}));
+            line.renderOrder=15; scene.add(line); mLines.push(line);
+            const arrowSkip = Math.max(Math.floor(30 / densityFactor), 8);
+            for(let i=8; i < seg.length-8; i += arrowSkip){
+                let p0=seg[i], p1=seg[i+3], dir=p1.clone().sub(p0).normalize();
+                if(dir.length() > 0.1){
+                    const hm=Hmag_TE(p0.x,y0,p0.z,phase), s=0.5+0.5*(hm/globalMaxH), c=getMFieldColor(hm,globalMaxH);
+                    const arrow=new THREE.ArrowHelper(dir,p0,0.22*s,c,0.08*s,0.04*s);
+                    arrow.line.renderOrder=15; arrow.cone.renderOrder=15;
+                    scene.add(arrow); mArrows.push(arrow);
+                }
+            }
+        }
+    }
+}
+
+function drawMagneticFieldLines_TE_3D(phase,globalMaxH,density){
+    const densityFactor = density / 5;
+    if(globalMaxH < 0.01) return;
+    const candidates=[];
+    const zStep = Math.max(1.2 / densityFactor, 0.4);
+    const yStep = Math.max(0.4 / densityFactor, 0.12);
+    const xStep = Math.max(0.5 / densityFactor, 0.15);
+    for(let z=-L/2+0.3; z <= L/2-0.3; z += zStep){
+        for(let y=0.15; y <= b-0.15; y += yStep){
+            for(let x=-a/2+0.3; x <= a/2-0.3; x += xStep){
+                candidates.push({x,y,z});
+            }
+        }
+    }
+    const wallZStep = Math.max(1.0 / densityFactor, 0.3);
+    const wallYStep = Math.max(0.3 / densityFactor, 0.1);
+    const wallXStep = Math.max(0.5 / densityFactor, 0.15);
+    for(let z=-L/2+0.3; z <= L/2-0.3; z += wallZStep){
+        for(let y=0.1; y <= b-0.1; y += wallYStep){
+            candidates.push({x:-a/2+0.05,y,z}); candidates.push({x:a/2-0.05,y,z});
+        }
+        for(let x=-a/2+0.3; x <= a/2-0.3; x += wallXStep){
+            candidates.push({x,y:0.05,z}); candidates.push({x,y:b-0.05,z});
+        }
+    }
+
+    const minDist = Math.max(0.6 / densityFactor, 0.2);
+    const filtered=[];
+    for(const p of candidates){
+        let tooClose=false;
+        for(const fp of filtered){
+            if(Math.sqrt((p.x-fp.x)**2+(p.y-fp.y)**2+(p.z-fp.z)**2) < minDist){tooClose=true;break;}
+        }
+        if(!tooClose) filtered.push(p);
+    }
+
+    for(const sp of filtered){
+        let fwd=integrateFieldLine_TE_3D(sp.x,sp.y,sp.z,300,0.08,phase);
+        let bwd=integrateFieldLine_TE_3D(sp.x,sp.y,sp.z,300,-0.08,phase);
+        let allPts=[];
+        for(let i=bwd.length-1; i >= 0; i--) allPts.push(bwd[i]);
+        allPts.push(new THREE.Vector3(sp.x,sp.y,sp.z));
+        for(let i=1; i < fwd.length; i++) allPts.push(fwd[i]);
+
+        let segs=[], cur=[];
+        for(let i=0; i < allPts.length; i++){
+            const p=allPts[i];
+            const inRange = p.x >= -a/2 && p.x <= a/2 && p.y >= 0 && p.y <= b && p.z >= -L/2 && p.z <= L/2;
+            if(inRange){
+                if(cur.length > 0){
+                    const last = cur[cur.length-1];
+                    const dist = p.distanceTo(last);
+                    if(dist > 0.8){
+                        segs.push(cur);
+                        cur = [];
+                    }
+                }
+                cur.push(p);
+            } else if(cur.length > 0){
+                segs.push(cur);
+                cur=[];
+            }
+        }
+        if(cur.length > 0) segs.push(cur);
+
+        for(const inPts of segs){
+            if(inPts.length < 5) continue;
+
+            const colors=[];
+            for(let i=0; i < inPts.length; i++){
+                const c=getMFieldColor(Hmag_TE(inPts[i].x,inPts[i].y,inPts[i].z,phase),globalMaxH);
+                colors.push(c.r,c.g,c.b);
+            }
+            const g=new THREE.BufferGeometry().setFromPoints(inPts);
+            g.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+            const line=new THREE.Line(g,new THREE.LineBasicMaterial({vertexColors:true}));
+            line.renderOrder=15; scene.add(line); mLines.push(line);
+
+            const arrowSkip = Math.max(Math.floor(30 / densityFactor), 8);
+            for(let i=8; i < inPts.length-8; i += arrowSkip){
+                let p0=inPts[i], p1=inPts[i+3], dir=p1.clone().sub(p0).normalize();
+                if(dir.length() > 0.1){
+                    const hm=Hmag_TE(p0.x,p0.y,p0.z,phase), s=0.5+0.5*(hm/globalMaxH), c=getMFieldColor(hm,globalMaxH);
+                    const arrow=new THREE.ArrowHelper(dir,p0,0.22*s,c,0.08*s,0.04*s);
+                    arrow.line.renderOrder=15; arrow.cone.renderOrder=15;
+                    scene.add(arrow); mArrows.push(arrow);
+                }
+            }
+        }
+    }
+}
+
+function drawMagneticFieldLines_TM(z0,phase,globalMaxH){
+    const densityFactor = tmMDensity / 5;
+    const baseNx = Math.max(Math.floor(12 * densityFactor), 6);
+    const baseNy = Math.max(Math.floor(8 * densityFactor), 4);
+    const nx=baseNx, ny=baseNy, dx=a/nx, dy=b/ny;
+
+    if(globalMaxH < 0.01) return;
+    const candidates=[];
+    for(let i=0; i <= nx; i++) for(let j=0; j <= ny; j++){
+        const x=-a/2+i*dx, y=j*dy;
+        if(x >= -a/2+0.05 && x <= a/2-0.05 && y >= 0.05 && y <= b-0.05) candidates.push({x,y});
+    }
+
+    const wallStep = Math.max(1.0 / densityFactor, 0.3);
+    for(let x=-a/2+0.3; x <= a/2-0.3; x += wallStep){
+        candidates.push({x,y:0.05}); candidates.push({x,y:b-0.05});
+    }
+    for(let y=0.3; y <= b-0.3; y += wallStep){
+        candidates.push({x:-a/2+0.05,y}); candidates.push({x:a/2-0.05,y});
+    }
+
+    const minDist = Math.max(0.5 / densityFactor, 0.15);
+    const filtered=[];
+    for(const p of candidates){
+        let tooClose=false;
+        for(const fp of filtered) if(Math.sqrt((p.x-fp.x)**2+(p.y-fp.y)**2) < minDist){tooClose=true;break;}
+        if(!tooClose) filtered.push(p);
+    }
+
+    for(const sp of filtered){
+        let fwd=integrateFieldLine_TM(sp.x,sp.y,300,0.08,phase,z0);
+        let bwd=integrateFieldLine_TM(sp.x,sp.y,300,-0.08,phase,z0);
+        let allPts=[];
+        for(let i=bwd.length-1; i >= 0; i--) allPts.push(bwd[i]);
+        for(let i=1; i < fwd.length; i++) allPts.push(fwd[i]);
+        if(allPts.length < 5) continue;
+        const colors=[];
+        for(let i=0; i < allPts.length; i++){
+            const c=getMFieldColor(Hmag_TM(allPts[i].x,allPts[i].y,z0,phase),globalMaxH);
+            colors.push(c.r,c.g,c.b);
+        }
+        const g=new THREE.BufferGeometry().setFromPoints(allPts);
+        g.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+        const line=new THREE.Line(g,new THREE.LineBasicMaterial({vertexColors:true}));
+        line.renderOrder=15; scene.add(line); mLines.push(line);
+
+        const arrowSkip = Math.max(Math.floor(30 / densityFactor), 8);
+        for(let i=8; i < allPts.length-8; i += arrowSkip){
+            let p0=allPts[i], p1=allPts[i+3], dir=p1.clone().sub(p0).normalize();
+            if(dir.length() > 0.1){
+                const hm=Hmag_TM(p0.x,p0.y,z0,phase), s=0.5+0.5*(hm/globalMaxH), c=getMFieldColor(hm,globalMaxH);
+                const arrow=new THREE.ArrowHelper(dir,p0,0.22*s,c,0.08*s,0.04*s);
+                arrow.line.renderOrder=15; arrow.cone.renderOrder=15;
+                scene.add(arrow); mArrows.push(arrow);
+            }
+        }
+    }
+}
+
+function updateMField(phase){
+    if(!showMCheck.checked) return;
+    clearMField();
+    if(mode==='TE'){
+        if(n===0){
+            const yList=[];
+            yList.push(b/4);
+            yList.push(b/2);
+            yList.push(3*b/4);
+            let globalMaxH=0;
+            for(let y0 of yList) for(let i=0; i <= 10; i++) for(let j=0; j <= 20; j++){
+                globalMaxH=Math.max(globalMaxH, Hmag_TE(-a/2+i*a/10,y0,-L/2+j*L/20,phase));
+            }
+            for(let y of yList) drawMagneticFieldLines_TE_m0(y,phase,globalMaxH,teMDensity);
+        } else {
+            let globalMaxH=0;
+            const densityFactor = teMDensity / 5;
+            const sampleZStep = Math.max(0.8 / densityFactor, 0.3);
+            const sampleYStep = Math.max(0.3 / densityFactor, 0.1);
+            const sampleXStep = Math.max(0.4 / densityFactor, 0.12);
+            for(let z=-L/2; z <= L/2; z += sampleZStep){
+                for(let y=0.1; y <= b-0.1; y += sampleYStep){
+                    for(let x=-a/2+0.1; x <= a/2-0.1; x += sampleXStep){
+                        globalMaxH=Math.max(globalMaxH, Hmag_TE(x,y,z,phase));
+                    }
+                }
+            }
+            drawMagneticFieldLines_TE_3D(phase,globalMaxH,teMDensity);
+        }
+    } else {
+        const densityFactor = tmMDensity / 5;
+        const zStep = Math.max(1.2 / densityFactor, 0.5);
+        const sampleI = Math.max(Math.floor(12 * densityFactor), 6);
+        const sampleJ = Math.max(Math.floor(8 * densityFactor), 4);
+
+        let zList = [];
+        if (showZSlice) {
+            zList = [Math.max(-L/2, Math.min(L/2, zSliceValue))];
+        } else {
+            for(let z=-L/2; z <= L/2+0.01; z += zStep) zList.push(z);
+        }
+        
+        let globalMaxH=0;
+        const globalZStep = Math.max(zStep, 0.5);
+        for(let zFull=-L/2; zFull <= L/2+0.01; zFull += globalZStep) {
+            for(let i=0; i <= sampleI; i++) for(let j=0; j <= sampleJ; j++){
+                globalMaxH=Math.max(globalMaxH, Hmag_TM(-a/2+i*a/sampleI,j*b/sampleJ,zFull,phase));
+            }
+        }
+        
+        for(let z of zList) drawMagneticFieldLines_TM(z,phase,globalMaxH);
+    }
+}
+
+
+// ==================== 坡印廷矢量 S = E × H ====================
+let poyntingObjects=[];
+function clearPoyntingField(){
+    for(const obj of poyntingObjects){
+        scene.remove(obj);
+        if(obj.line&&obj.line.geometry) obj.line.geometry.dispose();
+        if(obj.cone&&obj.cone.geometry) obj.cone.geometry.dispose();
+    }
+    poyntingObjects=[];
+}
+
+function getPoyntingColor(val, maxVal){
+    const t = Math.min(val/maxVal, 1.0);
+    // RdPu colormap: 浅粉白 -> 粉红 -> 玫红 -> 紫红 -> 深紫
+    // 使用分段 RGB 插值模拟 RdPu
+    let r, g, b;
+    if(t < 0.25){
+        const s = t / 0.25;
+        r = 255; g = Math.floor(240 - s * 40); b = Math.floor(240 - s * 80);
+    } else if(t < 0.5){
+        const s = (t - 0.25) / 0.25;
+        r = 255; g = Math.floor(200 - s * 120); b = Math.floor(160 - s * 60);
+    } else if(t < 0.75){
+        const s = (t - 0.5) / 0.25;
+        r = 255; g = Math.floor(80 - s * 60); b = Math.floor(100 + s * 50);
+    } else {
+        const s = (t - 0.75) / 0.25;
+        r = Math.floor(255 - s * 100); g = Math.floor(20 - s * 20); b = Math.floor(150 + s * 55);
+    }
+    return new THREE.Color(r/255, g/255, b/255);
+}
+
+function updatePoyntingField(phase){
+    if(!showPoyntingCheck.checked) return;
+    clearPoyntingField();
+
+    const densityFactor = poyntingDensity / 5;
+    const xStep = Math.max(0.8 / densityFactor, 0.2);
+    const yStep = Math.max(0.25 / densityFactor, 0.08);
+    const zStep = Math.max(1.2 / densityFactor, 0.4);
+
+    let globalMaxS = 0;
+    const samplePts = [];
+
+    // 采样计算全局最大值
+    for(let z = -L/2 + 0.3; z <= L/2 - 0.3; z += zStep){
+        for(let y = 0.15; y <= b - 0.15; y += yStep){
+            for(let x = -a/2 + 0.3; x <= a/2 - 0.3; x += xStep){
+                let sx, sy, sz, sMag;
+                if(mode === 'TE'){
+                    const ex = Ex_TE(x,y,z,phase), ey = Ey_TE(x,y,z,phase);
+                    const hx = Hx_TE(x,y,z,phase), hy = Hy_TE(x,y,z,phase), hz = Hz_TE(x,y,z,phase);
+                    sx = ey * hz;
+                    sy = -ex * hz;
+                    sz = ex * hy - ey * hx;
+                } else {
+                    const ex = Ex_TM(x,y,z,phase), ey = Ey_TM(x,y,z,phase), ez = Ez_TM(x,y,z,phase);
+                    const hx = Hx_TM(x,y,z,phase), hy = Hy_TM(x,y,z,phase);
+                    sx = -ez * hy;
+                    sy = ez * hx;
+                    sz = ex * hy - ey * hx;
+                }
+                sMag = Math.sqrt(sx*sx + sy*sy + sz*sz);
+                if(sMag > globalMaxS) globalMaxS = sMag;
+                samplePts.push({x,y,z,sx,sy,sz,sMag});
+            }
+        }
+    }
+
+    if(globalMaxS < 0.001) return;
+
+    // 阈值过滤，避免绘制过弱的箭头
+    const threshold = globalMaxS * 0.05;
+    const minDist = Math.max(0.5 / densityFactor, 0.15);
+
+    // 按强度排序，优先保留强点
+    samplePts.sort((a,b) => b.sMag - a.sMag);
+
+    const filtered = [];
+    for(const p of samplePts){
+        if(p.sMag < threshold) continue;
+        let tooClose = false;
+        for(const fp of filtered){
+            if(Math.sqrt((p.x-fp.x)**2 + (p.y-fp.y)**2 + (p.z-fp.z)**2) < minDist){
+                tooClose = true; break;
+            }
+        }
+        if(!tooClose) filtered.push(p);
+    }
+
+    for(const p of filtered){
+        const dir = new THREE.Vector3(p.sx, p.sy, p.sz).normalize();
+        const maxLen = 2.0 * (poyntingLength / 5);
+        const len = maxLen * (p.sMag / globalMaxS);
+        const color = getPoyntingColor(p.sMag, globalMaxS);
+        const headLen = Math.max(0.06, 0.25 * len);
+        const headWidth = headLen * 0.5;
+
+        const arrow = new THREE.ArrowHelper(
+            dir,
+            new THREE.Vector3(p.x, p.y, p.z),
+            len,
+            color,
+            headLen,
+            headWidth
+        );
+        arrow.line.renderOrder = 15;
+        arrow.cone.renderOrder = 15;
+        scene.add(arrow);
+        poyntingObjects.push(arrow);
+    }
+}
+
+let currentObjects=[];
+function clearCurrentField(){
+    for(const obj of currentObjects){
+        scene.remove(obj);
+        if(obj.line&&obj.line.geometry) obj.line.geometry.dispose();
+        if(obj.cone&&obj.cone.geometry) obj.cone.geometry.dispose();
+    }
+    currentObjects=[];
+}
+function addCurrentArrow(orig,dir,len,color,hl,hr){
+    if(len < 0.05) return;
+    const arrow=new THREE.ArrowHelper(dir.normalize(),orig,len,color,hl,hr);
+    arrow.line.renderOrder=15; arrow.cone.renderOrder=15;
+    scene.add(arrow); currentObjects.push(arrow);
+}
+function addCurrentArrowWithColor(orig,dir,jMag,maxJ,hlBase,hrBase){
+    if(jMag < 0.05) return;
+    const lengthFactor = currentLength / 5;
+    const len = jMag * 0.5 * lengthFactor;
+    const color = getCurrentColor(jMag, maxJ);
+    const s = 0.5 + 0.5 * (jMag / maxJ);
+    const arrow=new THREE.ArrowHelper(dir.normalize(),orig,len,color,hlBase*s,hrBase*s);
+    arrow.line.renderOrder=15; arrow.cone.renderOrder=15;
+    scene.add(arrow); currentObjects.push(arrow);
+}
+
+function updateCurrentField_TE(phase){
+    clearCurrentField();
+    const densityFactor = currentDensity / 5;
+    const ys = Math.max(0.22 / densityFactor, 0.06);
+    const zs = Math.max(0.45 / densityFactor, 0.12);
+    const xs = Math.max(0.28 / densityFactor, 0.08);
+
+    let maxJ = 0;
+    for(let z=-L/2+0.3; z <= L/2-0.3; z += zs){
+        for(let y=0.15; y <= b-0.15; y += ys){
+            const hyL = Hy_TE(-a/2, y, z, phase), hzL = Hz_TE(-a/2, y, z, phase);
+            maxJ = Math.max(maxJ, Math.sqrt(hzL*hzL + hyL*hyL));
+            const hyR = Hy_TE(a/2, y, z, phase), hzR = Hz_TE(a/2, y, z, phase);
+            maxJ = Math.max(maxJ, Math.sqrt(hzR*hzR + hyR*hyR));
+        }
+    }
+    for(let z=-L/2+0.3; z <= L/2-0.3; z += zs){
+        for(let x=-a/2+0.2; x <= a/2-0.2; x += xs){
+            const hxB = Hx_TE(x, 0, z, phase), hzB = Hz_TE(x, 0, z, phase);
+            maxJ = Math.max(maxJ, Math.sqrt(hzB*hzB + hxB*hxB));
+            const hxT = Hx_TE(x, b, z, phase), hzT = Hz_TE(x, b, z, phase);
+            maxJ = Math.max(maxJ, Math.sqrt(hzT*hzT + hxT*hxT));
+        }
+    }
+    if(maxJ < 1e-6) maxJ = 1;
+
+    for(let z=-L/2+0.3; z <= L/2-0.3; z += zs){
+        for(let y=0.15; y <= b-0.15; y += ys){
+            const hyL = Hy_TE(-a/2, y, z, phase);
+            const hzL = Hz_TE(-a/2, y, z, phase);
+            const jyL = -hzL;
+            const jzL =  hyL;
+            const magL = Math.sqrt(jyL*jyL + jzL*jzL);
+            if(magL > 0.05){
+                addCurrentArrowWithColor(
+                    new THREE.Vector3(-a/2 - 0.12, y, z),
+                    new THREE.Vector3(0, jyL, jzL),
+                    magL, maxJ, 0.12, 0.06
+                );
+            }
+
+            const hyR = Hy_TE(a/2, y, z, phase);
+            const hzR = Hz_TE(a/2, y, z, phase);
+            const jyR =  hzR;
+            const jzR = -hyR;
+            const magR = Math.sqrt(jyR*jyR + jzR*jzR);
+            if(magR > 0.05){
+                addCurrentArrowWithColor(
+                    new THREE.Vector3(a/2 + 0.12, y, z),
+                    new THREE.Vector3(0, jyR, jzR),
+                    magR, maxJ, 0.12, 0.06
+                );
+            }
+        }
+    }
+
+    for(let z=-L/2+0.3; z <= L/2-0.3; z += zs){
+        for(let x=-a/2+0.2; x <= a/2-0.2; x += xs){
+            const hxB = Hx_TE(x, 0, z, phase);
+            const hzB = Hz_TE(x, 0, z, phase);
+            const jxB = hzB;
+            const jzB = - hxB;
+            const magB = Math.sqrt(jxB*jxB + jzB*jzB);
+            if(magB > 0.05){
+                addCurrentArrowWithColor(
+                    new THREE.Vector3(x, -0.12, z),
+                    new THREE.Vector3(jxB, 0, jzB),
+                    magB, maxJ, 0.12, 0.06
+                );
+            }
+
+            const hxT = Hx_TE(x, b, z, phase);
+            const hzT = Hz_TE(x, b, z, phase);
+            const jxT =  -hzT;
+            const jzT = hxT;
+            const magT = Math.sqrt(jxT*jxT + jzT*jzT);
+            if(magT > 0.05){
+                addCurrentArrowWithColor(
+                    new THREE.Vector3(x, b + 0.12, z),
+                    new THREE.Vector3(jxT, 0, jzT),
+                    magT, maxJ, 0.12, 0.06
+                );
+            }
+        }
+    }
+
+    // 导管边缘（角线）电流采样
+    for(let z=-L/2+0.3; z <= L/2-0.3; z += zs){
+        // 左壁面 y=0 和 y=b 边缘
+        const hyL0 = Hy_TE(-a/2, 0, z, phase), hzL0 = Hz_TE(-a/2, 0, z, phase);
+        const jyL0 = -hzL0, jzL0 = hyL0, magL0 = Math.sqrt(jyL0*jyL0 + jzL0*jzL0);
+        if(magL0 > 0.05) addCurrentArrowWithColor(new THREE.Vector3(-a/2 - 0.12, 0, z), new THREE.Vector3(0, jyL0, jzL0), magL0, maxJ, 0.12, 0.06);
+        const hyLb = Hy_TE(-a/2, b, z, phase), hzLb = Hz_TE(-a/2, b, z, phase);
+        const jyLb = -hzLb, jzLb = hyLb, magLb = Math.sqrt(jyLb*jyLb + jzLb*jzLb);
+        if(magLb > 0.05) addCurrentArrowWithColor(new THREE.Vector3(-a/2 - 0.12, b, z), new THREE.Vector3(0, jyLb, jzLb), magLb, maxJ, 0.12, 0.06);
+        // 右壁面 y=0 和 y=b 边缘
+        const hyR0 = Hy_TE(a/2, 0, z, phase), hzR0 = Hz_TE(a/2, 0, z, phase);
+        const jyR0 = hzR0, jzR0 = -hyR0, magR0 = Math.sqrt(jyR0*jyR0 + jzR0*jzR0);
+        if(magR0 > 0.05) addCurrentArrowWithColor(new THREE.Vector3(a/2 + 0.12, 0, z), new THREE.Vector3(0, jyR0, jzR0), magR0, maxJ, 0.12, 0.06);
+        const hyRb = Hy_TE(a/2, b, z, phase), hzRb = Hz_TE(a/2, b, z, phase);
+        const jyRb = hzRb, jzRb = -hyRb, magRb = Math.sqrt(jyRb*jyRb + jzRb*jzRb);
+        if(magRb > 0.05) addCurrentArrowWithColor(new THREE.Vector3(a/2 + 0.12, b, z), new THREE.Vector3(0, jyRb, jzRb), magRb, maxJ, 0.12, 0.06);
+        // 底壁面 x=-a/2 和 x=a/2 边缘
+        const hxB0 = Hx_TE(-a/2, 0, z, phase), hzB0 = Hz_TE(-a/2, 0, z, phase);
+        const jxB0 = hzB0, jzB0 = -hxB0, magB0 = Math.sqrt(jxB0*jxB0 + jzB0*jzB0);
+        if(magB0 > 0.05) addCurrentArrowWithColor(new THREE.Vector3(-a/2, -0.12, z), new THREE.Vector3(jxB0, 0, jzB0), magB0, maxJ, 0.12, 0.06);
+        const hxBa = Hx_TE(a/2, 0, z, phase), hzBa = Hz_TE(a/2, 0, z, phase);
+        const jxBa = hzBa, jzBa = -hxBa, magBa = Math.sqrt(jxBa*jxBa + jzBa*jzBa);
+        if(magBa > 0.05) addCurrentArrowWithColor(new THREE.Vector3(a/2, -0.12, z), new THREE.Vector3(jxBa, 0, jzBa), magBa, maxJ, 0.12, 0.06);
+        // 顶壁面 x=-a/2 和 x=a/2 边缘
+        const hxT0 = Hx_TE(-a/2, b, z, phase), hzT0 = Hz_TE(-a/2, b, z, phase);
+        const jxT0 = -hzT0, jzT0 = hxT0, magT0 = Math.sqrt(jxT0*jxT0 + jzT0*jzT0);
+        if(magT0 > 0.05) addCurrentArrowWithColor(new THREE.Vector3(-a/2, b + 0.12, z), new THREE.Vector3(jxT0, 0, jzT0), magT0, maxJ, 0.12, 0.06);
+        const hxTa = Hx_TE(a/2, b, z, phase), hzTa = Hz_TE(a/2, b, z, phase);
+        const jxTa = -hzTa, jzTa = hxTa, magTa = Math.sqrt(jxTa*jxTa + jzTa*jzTa);
+        if(magTa > 0.05) addCurrentArrowWithColor(new THREE.Vector3(a/2, b + 0.12, z), new THREE.Vector3(jxTa, 0, jzTa), magTa, maxJ, 0.12, 0.06);
+    }
+}
+
+function updateCurrentField_TM(phase){
+    clearCurrentField();
+    const densityFactor = currentDensity / 5;
+    const ys = Math.max(0.35 / densityFactor, 0.08);
+    const zs = Math.max(0.7 / densityFactor, 0.15);
+    const xs = Math.max(0.45 / densityFactor, 0.10);
+
+    let maxJ = 0;
+    for(let z=-L/2+0.3; z <= L/2-0.3; z += zs){
+        for(let y=0.15; y <= b-0.15; y += ys){
+            const hyL=Hy_TM(-a/2,y,z,phase);
+            maxJ = Math.max(maxJ, Math.abs(hyL));
+            const hyR=Hy_TM(a/2,y,z,phase);
+            maxJ = Math.max(maxJ, Math.abs(hyR));
+        }
+    }
+    for(let z=-L/2+0.3; z <= L/2-0.3; z += zs){
+        for(let x=-a/2+0.2; x <= a/2-0.2; x += xs){
+            const hxB=Hx_TM(x,0,z,phase);
+            maxJ = Math.max(maxJ, Math.abs(hxB));
+            const hxT=Hx_TM(x,b,z,phase);
+            maxJ = Math.max(maxJ, Math.abs(hxT));
+        }
+    }
+    if(maxJ < 1e-6) maxJ = 1;
+
+    for(let z=-L/2+0.3; z <= L/2-0.3; z += zs){
+        for(let y=0.15; y <= b-0.15; y += ys){
+            const hyL=Hy_TM(-a/2,y,z,phase), jzL=hyL, magL=Math.abs(jzL);
+            if(magL > 0.05){
+                const dirL=jzL>=0?new THREE.Vector3(0,0,1):new THREE.Vector3(0,0,-1);
+                addCurrentArrowWithColor(
+                    new THREE.Vector3(-a/2-0.12,y,z), dirL, magL, maxJ, 0.18, 0.09
+                );
+            }
+            const hyR=Hy_TM(a/2,y,z,phase), jzR=-hyR, magR=Math.abs(jzR);
+            if(magR > 0.05){
+                const dirR=jzR>=0?new THREE.Vector3(0,0,1):new THREE.Vector3(0,0,-1);
+                addCurrentArrowWithColor(
+                    new THREE.Vector3(a/2+0.12,y,z), dirR, magR, maxJ, 0.18, 0.09
+                );
+            }
+        }
+    }
+    for(let z=-L/2+0.3; z <= L/2-0.3; z += zs){
+        for(let x=-a/2+0.2; x <= a/2-0.2; x += xs){
+            const hxB=Hx_TM(x,0,z,phase), jzB=-hxB, magB=Math.abs(jzB);
+            if(magB > 0.05){
+                const dirB=jzB>=0?new THREE.Vector3(0,0,1):new THREE.Vector3(0,0,-1);
+                addCurrentArrowWithColor(
+                    new THREE.Vector3(x,-0.12,z), dirB, magB, maxJ, 0.18, 0.09
+                );
+            }
+            const hxT=Hx_TM(x,b,z,phase), jzT=hxT, magT=Math.abs(jzT);
+            if(magT > 0.05){
+                const dirT=jzT>=0?new THREE.Vector3(0,0,1):new THREE.Vector3(0,0,-1);
+                addCurrentArrowWithColor(
+                    new THREE.Vector3(x,b+0.12,z), dirT, magT, maxJ, 0.18, 0.09
+                );
+            }
+        }
+    }
+
+    // 导管边缘（角线）电流采样
+    for(let z=-L/2+0.3; z <= L/2-0.3; z += zs){
+        // 左壁面 y=0 和 y=b 边缘
+        const hyL0=Hy_TM(-a/2,0,z,phase), jzL0=hyL0, magL0=Math.abs(jzL0);
+        if(magL0 > 0.05){ const dirL0=jzL0>=0?new THREE.Vector3(0,0,1):new THREE.Vector3(0,0,-1); addCurrentArrowWithColor(new THREE.Vector3(-a/2-0.12,0,z), dirL0, magL0, maxJ, 0.18, 0.09); }
+        const hyLb=Hy_TM(-a/2,b,z,phase), jzLb=hyLb, magLb=Math.abs(jzLb);
+        if(magLb > 0.05){ const dirLb=jzLb>=0?new THREE.Vector3(0,0,1):new THREE.Vector3(0,0,-1); addCurrentArrowWithColor(new THREE.Vector3(-a/2-0.12,b,z), dirLb, magLb, maxJ, 0.18, 0.09); }
+        // 右壁面 y=0 和 y=b 边缘
+        const hyR0=Hy_TM(a/2,0,z,phase), jzR0=-hyR0, magR0=Math.abs(jzR0);
+        if(magR0 > 0.05){ const dirR0=jzR0>=0?new THREE.Vector3(0,0,1):new THREE.Vector3(0,0,-1); addCurrentArrowWithColor(new THREE.Vector3(a/2+0.12,0,z), dirR0, magR0, maxJ, 0.18, 0.09); }
+        const hyRb=Hy_TM(a/2,b,z,phase), jzRb=-hyRb, magRb=Math.abs(jzRb);
+        if(magRb > 0.05){ const dirRb=jzRb>=0?new THREE.Vector3(0,0,1):new THREE.Vector3(0,0,-1); addCurrentArrowWithColor(new THREE.Vector3(a/2+0.12,b,z), dirRb, magRb, maxJ, 0.18, 0.09); }
+        // 底壁面 x=-a/2 和 x=a/2 边缘
+        const hxB0=Hx_TM(-a/2,0,z,phase), jzB0=-hxB0, magB0=Math.abs(jzB0);
+        if(magB0 > 0.05){ const dirB0=jzB0>=0?new THREE.Vector3(0,0,1):new THREE.Vector3(0,0,-1); addCurrentArrowWithColor(new THREE.Vector3(-a/2,-0.12,z), dirB0, magB0, maxJ, 0.18, 0.09); }
+        const hxBa=Hx_TM(a/2,0,z,phase), jzBa=-hxBa, magBa=Math.abs(jzBa);
+        if(magBa > 0.05){ const dirBa=jzBa>=0?new THREE.Vector3(0,0,1):new THREE.Vector3(0,0,-1); addCurrentArrowWithColor(new THREE.Vector3(a/2,-0.12,z), dirBa, magBa, maxJ, 0.18, 0.09); }
+        // 顶壁面 x=-a/2 和 x=a/2 边缘
+        const hxT0=Hx_TM(-a/2,b,z,phase), jzT0=hxT0, magT0=Math.abs(jzT0);
+        if(magT0 > 0.05){ const dirT0=jzT0>=0?new THREE.Vector3(0,0,1):new THREE.Vector3(0,0,-1); addCurrentArrowWithColor(new THREE.Vector3(-a/2,b+0.12,z), dirT0, magT0, maxJ, 0.18, 0.09); }
+        const hxTa=Hx_TM(a/2,b,z,phase), jzTa=hxTa, magTa=Math.abs(jzTa);
+        if(magTa > 0.05){ const dirTa=jzTa>=0?new THREE.Vector3(0,0,1):new THREE.Vector3(0,0,-1); addCurrentArrowWithColor(new THREE.Vector3(a/2,b+0.12,z), dirTa, magTa, maxJ, 0.18, 0.09); }
+    }
+}
+
+function updateCurrentField(phase){
+    if(!showCurrentCheck.checked) return;
+    if(mode==='TE') updateCurrentField_TE(phase); else updateCurrentField_TM(phase);
+}
+
+let chargeMeshes=[];
+function clearChargeMeshes(){
+    for(const item of chargeMeshes){
+        scene.remove(item.mesh);
+        if(item.texture) item.texture.dispose();
+        item.mesh.material.dispose();
+        item.mesh.geometry.dispose();
+    }
+    chargeMeshes=[];
+}
+
+function bwrColor(t){
+    let r, g, b;
+    if(t < 0.5){
+        const s = t / 0.5;
+        r = Math.floor(255 * s);
+        g = Math.floor(255 * s);
+        b = 255;
+    } else {
+        const s = (t - 0.5) / 0.5;
+        r = 255;
+        g = Math.floor(255 * (1 - s));
+        b = Math.floor(255 * (1 - s));
+    }
+    return {r, g, b};
+}
+
+function getWallCoords(type, px, py, width, height){
+    const u = px / width;
+    const v = 1 - py / height;
+
+    if(type === 'left'){
+        return { xw: -a/2, yw: b*v, zw: -L/2 + L*u };
+    } else if(type === 'right'){
+        return { xw: a/2, yw: b*v, zw: -L/2 + L*u };
+    } else if(type === 'bottom'){
+        return { xw: -a/2 + a*u, yw: 0, zw: -L/2 + L*v };
+    } else {
+        return { xw: -a/2 + a*u, yw: b, zw: -L/2 + L*v };
+    }
+}
+
+function updateChargeCanvas(item, phase){
+    const {canvas, ctx, width, height, type} = item;
+    const imgData = ctx.createImageData(width, height);
+    const data = imgData.data;
+    const mPIa = Math.PI*m/a, nPIb = Math.PI*n/b;
+    const kc2 = get_kc2(), scale = beta/kc2;
+
+    let maxAbs = 0;
+    for(let py=0; py < height; py++){
+        for(let px=0; px < width; px++){
+            const {xw,yw,zw} = getWallCoords(type, px, py, width, height);
+            let rho = 0;
+            if(mode === 'TM'){
+                if(type==='left' || type==='right'){
+                    const cos_val = Math.cos(mPIa*(xw+a/2));
+                    const ex = -scale*mPIa*cos_val*Math.sin(nPIb*yw)*Math.sin(phase-beta*zw);
+                    rho = (type==='left') ? ex : -ex;
+                } else {
+                    const cos_val = Math.cos(nPIb*yw);
+                    const ey = -scale*nPIb*Math.sin(mPIa*(xw+a/2))*cos_val*Math.sin(phase-beta*zw);
+                    rho = (type==='bottom') ? ey : -ey;
+                }
+            } else {
+                if(type==='left' || type==='right'){
+                    const cos_val = Math.cos(mPIa*(xw+a/2));
+                    const ex_te = cos_val*Math.sin(nPIb*yw)*Math.sin(phase-beta*zw);
+                    rho = (type==='left') ? ex_te : -ex_te;
+                } else {
+                    const cos_val = Math.cos(nPIb*yw);
+                    const ey_te = Math.sin(mPIa*(xw+a/2))*cos_val*Math.sin(phase-beta*zw);
+                    rho = (type==='bottom') ? ey_te : -ey_te;
+                }
+            }
+            maxAbs = Math.max(maxAbs, Math.abs(rho));
+        }
+    }
+    if(maxAbs < 1e-10) maxAbs = 1;
+
+    for(let py=0; py < height; py++){
+        for(let px=0; px < width; px++){
+            const {xw,yw,zw} = getWallCoords(type, px, py, width, height);
+            let rho = 0;
+            if(mode === 'TM'){
+                if(type==='left' || type==='right'){
+                    const cos_val = Math.cos(mPIa*(xw+a/2));
+                    const ex = -scale*mPIa*cos_val*Math.sin(nPIb*yw)*Math.sin(phase-beta*zw);
+                    rho = (type==='left') ? ex : -ex;
+                } else {
+                    const cos_val = Math.cos(nPIb*yw);
+                    const ey = -scale*nPIb*Math.sin(mPIa*(xw+a/2))*cos_val*Math.sin(phase-beta*zw);
+                    rho = (type==='bottom') ? ey : -ey;
+                }
+            } else {
+                if(type==='left' || type==='right'){
+                    const cos_val = Math.cos(mPIa*(xw+a/2));
+                    const ex_te = -cos_val*Math.sin(nPIb*yw)*Math.sin(phase-beta*zw);
+                    rho = (type==='left') ? ex_te : -ex_te;
+                } else {
+                    const cos_val = Math.cos(nPIb*yw);
+                    const ey_te = Math.sin(mPIa*(xw+a/2))*cos_val*Math.sin(phase-beta*zw);
+                    rho = (type==='bottom') ? ey_te : -ey_te;
+                }
+            }
+            const t = rho / maxAbs;
+            const mappedT = 0.5 + 0.5 * t;
+            const color = bwrColor(Math.max(0, Math.min(1, mappedT)));
+            const idx = (py*width + px)*4;
+            data[idx] = color.r; data[idx+1] = color.g; data[idx+2] = color.b; data[idx+3] = 255;
+        }
+    }
+    ctx.putImageData(imgData, 0, 0);
+}
+
+function createChargeMeshes(){
+    clearChargeMeshes();
+    const opacity = parseFloat(chargeOpacityInput.value);
+    const mat = new THREE.MeshBasicMaterial({
+        side: THREE.DoubleSide, transparent: true, opacity: opacity,
+        depthTest: true, depthWrite: false
+    });
+
+    const leftGeo = new THREE.PlaneGeometry(L, b);
+    leftGeo.rotateY(-Math.PI/2);
+    const leftCanvas = document.createElement('canvas');
+    leftCanvas.width = 128; leftCanvas.height = 64;
+    const leftTex = new THREE.CanvasTexture(leftCanvas);
+    const leftMat = mat.clone(); leftMat.map = leftTex;
+    const leftMesh = new THREE.Mesh(leftGeo, leftMat);
+    leftMesh.position.set(-a/2 - 0.01, b/2, 0);
+    scene.add(leftMesh);
+    chargeMeshes.push({mesh:leftMesh, type:'left', texture:leftTex, canvas:leftCanvas, ctx:leftCanvas.getContext('2d'), width:128, height:64});
+
+    const rightGeo = new THREE.PlaneGeometry(L, b);
+    const rightUv = rightGeo.attributes.uv;
+    for(let i=0; i < rightUv.count; i++) rightUv.setX(i, 1 - rightUv.getX(i));
+    rightGeo.attributes.uv.needsUpdate = true;
+    rightGeo.rotateY(Math.PI/2);
+    const rightCanvas = document.createElement('canvas');
+    rightCanvas.width = 128; rightCanvas.height = 64;
+    const rightTex = new THREE.CanvasTexture(rightCanvas);
+    const rightMat = mat.clone(); rightMat.map = rightTex;
+    const rightMesh = new THREE.Mesh(rightGeo, rightMat);
+    rightMesh.position.set(a/2 + 0.01, b/2, 0);
+    scene.add(rightMesh);
+    chargeMeshes.push({mesh:rightMesh, type:'right', texture:rightTex, canvas:rightCanvas, ctx:rightCanvas.getContext('2d'), width:128, height:64});
+
+    const bottomGeo = new THREE.PlaneGeometry(a, L);
+    bottomGeo.rotateX(Math.PI/2);
+    const bottomCanvas = document.createElement('canvas');
+    bottomCanvas.width = 128; bottomCanvas.height = 64;
+    const bottomTex = new THREE.CanvasTexture(bottomCanvas);
+    const bottomMat = mat.clone(); bottomMat.map = bottomTex;
+    const bottomMesh = new THREE.Mesh(bottomGeo, bottomMat);
+    bottomMesh.position.set(0, -0.01, 0);
+    scene.add(bottomMesh);
+    chargeMeshes.push({mesh:bottomMesh, type:'bottom', texture:bottomTex, canvas:bottomCanvas, ctx:bottomCanvas.getContext('2d'), width:128, height:64});
+
+    const topGeo = new THREE.PlaneGeometry(a, L);
+    topGeo.rotateX(Math.PI/2);
+    const topCanvas = document.createElement('canvas');
+    topCanvas.width = 128; topCanvas.height = 64;
+    const topTex = new THREE.CanvasTexture(topCanvas);
+    const topMat = mat.clone(); topMat.map = topTex;
+    const topMesh = new THREE.Mesh(topGeo, topMat);
+    topMesh.position.set(0, b + 0.01, 0);
+    scene.add(topMesh);
+    chargeMeshes.push({mesh:topMesh, type:'top', texture:topTex, canvas:topCanvas, ctx:topCanvas.getContext('2d'), width:128, height:64});
+}
+
+function createWaveguideGrid() {
+    if(waveguideGrid) { scene.remove(waveguideGrid); waveguideGrid = null; }
+    const gridGroup = new THREE.Group();
+
+    const nx = 12, ny = 4, nz = 20;
+    const dx = a / nx, dy = b / ny, dz = L / nz;
+    const gridColor = 0x445566;
+    const gridOpacity = 0.25;
+    const gridMat = new THREE.LineBasicMaterial({ color: gridColor, transparent: true, opacity: gridOpacity });
+
+    for(let j = 0; j <= ny; j++){
+        for(let k = 0; k <= nz; k++){
+            const y = j * dy;
+            const z = -L/2 + k * dz;
+            const pts = [new THREE.Vector3(-a/2, y, z), new THREE.Vector3(a/2, y, z)];
+            const geo = new THREE.BufferGeometry().setFromPoints(pts);
+            const line = new THREE.Line(geo, gridMat);
+            gridGroup.add(line);
+        }
+    }
+
+    for(let i = 0; i <= nx; i++){
+        for(let k = 0; k <= nz; k++){
+            const x = -a/2 + i * dx;
+            const z = -L/2 + k * dz;
+            const pts = [new THREE.Vector3(x, 0, z), new THREE.Vector3(x, b, z)];
+            const geo = new THREE.BufferGeometry().setFromPoints(pts);
+            const line = new THREE.Line(geo, gridMat);
+            gridGroup.add(line);
+        }
+    }
+
+    for(let i = 0; i <= nx; i++){
+        for(let j = 0; j <= ny; j++){
+            const x = -a/2 + i * dx;
+            const y = j * dy;
+            const pts = [new THREE.Vector3(x, y, -L/2), new THREE.Vector3(x, y, L/2)];
+            const geo = new THREE.BufferGeometry().setFromPoints(pts);
+            const line = new THREE.Line(geo, gridMat);
+            gridGroup.add(line);
+        }
+    }
+
+    scene.add(gridGroup);
+    waveguideGrid = gridGroup;
+}
+
+function updateChargeField(phase){
+    if(!showChargeCheck.checked || chargeMeshes.length===0) return;
+    for(const item of chargeMeshes){
+        updateChargeCanvas(item, phase);
+        item.texture.needsUpdate = true;
+    }
+}
+
+updateDimensionRanges();
+updatePropagationParameters();
+if(showGridCheck.checked) createWaveguideGrid();
+updateEField(0); updateMField(0); updateLegendVisibility();
+    if(showPoyntingCheck.checked) { clearPoyntingField(); updatePoyntingField(0); } else clearPoyntingField();
+
+function loop(){
+    requestAnimationFrame(loop);
+    if(isRunning){
+        time += 0.02;
+        const phase = omega * time;
+        updateEField(phase); updateMField(phase);
+        updateChargeField(phase); updateCurrentField(phase);
+        if(showPoyntingCheck.checked) updatePoyntingField(phase); else clearPoyntingField();
+        if(pickedPoint) updateFieldProbe(phase);
+        document.getElementById('phase').textContent = phase.toFixed(2);
+    }
+    controls.update(); renderer.render(scene,camera);
+}
+loop();
+
+const sceneWrap = document.getElementById('scene-wrap');
+window.onresize = ()=>{
+    const w = sceneWrap.clientWidth;
+    const h = sceneWrap.clientHeight;
+    camera.aspect = w/h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w,h);
+}
+</script>
+</div>
+</body>
+</html>

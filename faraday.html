@@ -1,0 +1,1436 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>法拉第电磁感应定律 </title>
+    <style>
+        :root {
+            --ahnu-blue: #003d7a;
+            --ahnu-gold: #c9a227;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', 'PingFang SC', Roboto, system-ui, -apple-system, sans-serif;
+            background: #0b1219;
+            color: #e8edf3;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            background: linear-gradient(90deg, var(--ahnu-blue) 0%, #0056a3 100%);
+            color: white;
+            padding: 0 40px;
+            display: flex;
+            align-items: center;
+            height: 64px;
+            box-shadow: 0 4px 20px rgba(0, 61, 122, 0.25);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            flex-shrink: 0;
+        }
+        .header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 2px;
+        }
+        .header .back {
+            margin-left: auto;
+            color: white;
+            text-decoration: none;
+            font-size: 13px;
+            opacity: 0.85;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: opacity 0.2s;
+        }
+        .header .back:hover {
+            opacity: 1;
+        }
+        #app {
+            display: flex;
+            flex: 1;
+            width: 100%;
+            background: rgba(18, 28, 40, 0.75);
+            backdrop-filter: blur(6px);
+            overflow: hidden;
+        }
+        #canvas-wrap {
+            flex: 1;
+            position: relative;
+            background: #0a0f16;
+            overflow: hidden;
+        }
+        #canvas-wrap canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffaa00;
+            font-size: 1rem;
+            letter-spacing: 2px;
+            z-index: 999;
+            text-shadow: 0 0 15px rgba(255,170,0,0.5);
+            text-align: center;
+        }
+        #loading .err {
+            color: #ff6b6b;
+            font-size: 0.8rem;
+            margin-top: 12px;
+            max-width: 400px;
+            line-height: 1.6;
+        }
+        #info {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            background: rgba(10, 18, 28, 0.82);
+            color: #e8edf3;
+            padding: 14px 20px;
+            border-radius: 12px;
+            pointer-events: none;
+            z-index: 50;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.06);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+            max-width: 380px;
+        }
+        #info h1 {
+            margin: 0 0 6px;
+            font-size: 1.1rem;
+            letter-spacing: 0.5px;
+            color: #b0d0ff;
+        }
+        #info p {
+            margin: 4px 0;
+            font-size: 0.82rem;
+            line-height: 1.45;
+            opacity: 0.85;
+            color: #a0b8d0;
+        }
+        #info .e-color  { color: #ff7b7b; font-weight: 600; }
+        #info .b-color  { color: #5fb8ff; font-weight: 600; }
+        #info .hl       { color: #f0c060; font-weight: 600; }
+        #info .pos      { color: #88ff88; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+        /* ===== 指针式电动势表盘 ===== */
+        #emf-meter {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 320px;
+            height: 150px;
+            z-index: 50;
+            pointer-events: none;
+            filter: drop-shadow(0 4px 16px rgba(0,0,0,0.6));
+        }
+        #emf-meter svg {
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+        .meter-bg {
+            fill: rgba(0, 0, 0, 0.7);
+            stroke: rgba(255,255,255,0.08);
+            stroke-width: 1;
+        }
+        .meter-arc-bg {
+            fill: none;
+            stroke: rgba(255,255,255,0.06);
+            stroke-width: 10;
+            stroke-linecap: round;
+        }
+        .meter-tick {
+            stroke: rgba(255,255,255,0.35);
+            stroke-width: 1.2;
+        }
+        .meter-tick-major {
+            stroke: rgba(255,255,255,0.6);
+            stroke-width: 1.8;
+        }
+        .meter-tick-label {
+            fill: rgba(255,255,255,0.5);
+            font-size: 9px;
+            font-family: 'Segoe UI', monospace;
+            text-anchor: middle;
+        }
+        .meter-label {
+            fill: rgba(255,255,255,0.55);
+            font-size: 10px;
+            font-family: 'Segoe UI', sans-serif;
+            text-anchor: middle;
+            letter-spacing: 1px;
+        }
+        .meter-value {
+            fill: #00ffaa;
+            font-size: 22px;
+            font-weight: 700;
+            font-family: 'Consolas', monospace;
+            text-anchor: middle;
+            transition: fill 0.3s;
+        }
+        .meter-unit {
+            fill: rgba(255,255,255,0.5);
+            font-size: 11px;
+            font-family: 'Segoe UI', sans-serif;
+            text-anchor: middle;
+        }
+        .meter-needle {
+            transition: transform 0.08s linear;
+            transform-origin: 160px 130px;
+        }
+        .meter-needle-line {
+            stroke: #ff5555;
+            stroke-width: 2.5;
+            stroke-linecap: round;
+        }
+        .meter-needle-hub {
+            fill: #ff5555;
+            stroke: rgba(255,255,255,0.3);
+            stroke-width: 1;
+        }
+        .meter-zero {
+            stroke: rgba(0, 255, 170, 0.4);
+            stroke-width: 1.5;
+            stroke-dasharray: 3 3;
+        }
+
+        #panel {
+            width: 310px;
+            min-width: 310px;
+            padding: 22px 20px 26px;
+            background: rgba(12, 20, 30, 0.85);
+            backdrop-filter: blur(12px);
+            border-left: 1px solid rgba(255, 255, 255, 0.05);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        #panel::-webkit-scrollbar {
+            width: 4px;
+        }
+        #panel::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+        }
+        .panel-title {
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            background: linear-gradient(135deg, #b0d0ff, #7a9eff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .section {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 14px;
+            padding: 14px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            transition: border-color 0.2s;
+        }
+        .section:hover {
+            border-color: rgba(255, 255, 255, 0.08);
+        }
+        .section-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #9ab0cc;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .section-label .badge {
+            font-size: 10px;
+            background: rgba(255, 255, 255, 0.06);
+            padding: 0 10px;
+            border-radius: 12px;
+            color: #6a8aaa;
+        }
+        .btn-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            flex: 1;
+            min-width: 60px;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #e8edf3;
+            background: rgba(255, 255, 255, 0.06);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            letter-spacing: 0.3px;
+            border: 1px solid transparent;
+            user-select: none;
+        }
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        .btn:active {
+            transform: scale(0.97);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #2a4a7a, #1a3560);
+            border-color: rgba(255, 255, 255, 0.08);
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #3a5a8a, #2a4570);
+        }
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.04);
+        }
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.10);
+        }
+        .btn-active {
+            background: linear-gradient(135deg, #3a7aaa, #2a5a8a);
+            border-color: rgba(100, 180, 255, 0.3);
+            box-shadow: 0 0 16px rgba(60, 140, 255, 0.15);
+        }
+        .slider-group {
+            margin-top: 6px;
+        }
+        .slider-group label {
+            font-size: 12px;
+            color: #7a90aa;
+            display: flex;
+            justify-content: space-between;
+        }
+        .slider-group label span {
+            color: #b0c8e0;
+            font-weight: 500;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 4px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.10);
+            outline: none;
+            margin: 6px 0 4px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #5a8ad0, #3a6aaa);
+            cursor: pointer;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+            transition: 0.15s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #5a8ad0, #3a6aaa);
+            cursor: pointer;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+        }
+        .legend-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 16px;
+            margin-top: 4px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #9ab0cc;
+        }
+        .legend-gradient {
+            width: 80px;
+            height: 10px;
+            border-radius: 5px;
+            flex-shrink: 0;
+            background: linear-gradient(to right,
+                #0000ff 0%, #00aaff 25%, #00ffcc 45%,
+                #ffff00 65%, #ff8800 85%, #ff0000 100%);
+        }
+        .legend-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .switch-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 2px 0;
+        }
+        .switch-label {
+            font-size: 13px;
+            color: #9ab0cc;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .switch-label .hint {
+            font-size: 10px;
+            color: #6a80a0;
+            background: rgba(255,255,255,0.04);
+            padding: 1px 8px;
+            border-radius: 8px;
+        }
+        .toggle-switch {
+            position: relative;
+            width: 40px;
+            height: 22px;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            inset: 0;
+            background: rgba(255,255,255,0.12);
+            border-radius: 22px;
+            transition: 0.25s;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .toggle-slider::before {
+            content: "";
+            position: absolute;
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            bottom: 2px;
+            background: #8aaac8;
+            border-radius: 50%;
+            transition: 0.25s;
+        }
+        .toggle-switch input:checked + .toggle-slider {
+            background: linear-gradient(135deg, #cc7a1a, #e0952a);
+            border-color: rgba(255,170,0,0.4);
+            box-shadow: 0 0 12px rgba(255,170,0,0.3);
+        }
+        .toggle-switch input:checked + .toggle-slider::before {
+            transform: translateX(18px);
+            background: #fff;
+        }
+        @media (max-width: 900px) {
+            #app {
+                flex-direction: column;
+                height: auto;
+                width: 100vw;
+                backdrop-filter: none;
+            }
+            #panel {
+                width: 100%;
+                min-width: unset;
+                max-height: 45vh;
+                border-left: none;
+                border-top: 1px solid rgba(255, 255, 255, 0.05);
+                padding: 16px;
+            }
+            #canvas-wrap {
+                height: 55vh;
+            }
+            #emf-meter {
+                width: 240px;
+                height: 115px;
+                bottom: 12px;
+            }
+        }
+        @media (max-width: 500px) {
+            #panel {
+                padding: 12px;
+                gap: 10px;
+            }
+            .section {
+                padding: 10px 12px;
+            }
+            .btn {
+                font-size: 12px;
+                padding: 6px 10px;
+                min-width: 50px;
+            }
+            #info {
+                max-width: 200px;
+                padding: 8px 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <h1>⚡ 法拉第电磁感应定律 </h1>
+        <a class="back" href="index.html">← 返回实验大厅</a>
+    </header>
+
+    <div id="app">
+        <div id="canvas-wrap">
+            <div id="loading">
+                <div>正在加载 WebGL 场景…</div>
+                <div class="err" id="loading-err"></div>
+            </div>
+
+            <!-- 左上角信息 -->
+            <div id="info">
+                <h1>⚡ 法拉第电磁感应定律</h1>
+                <p>
+                    感应电动势 <span class="e-color">E = - dΦ / dt</span>
+                </p>
+                <p>
+                    磁铁位置：<span class="pos" id="info-position">z = 0.00</span>
+                </p>
+                <p>
+                    移动速度：<span class="hl" id="info-speed">1.0x</span>
+                </p>
+                <p style="font-size:0.75rem; opacity:0.65;">
+                    ※ 磁场模型：N极(红) → S极(蓝)
+                </p>
+            </div>
+
+            <!-- 指针式电动势表盘 -->
+            <div id="emf-meter">
+                <svg viewBox="0 0 320 150" preserveAspectRatio="xMidYMid meet">
+                    <!-- 背景 -->
+                    <rect class="meter-bg" x="10" y="10" width="300" height="130" rx="16"/>
+
+                    <!-- 圆弧背景 -->
+                    <path class="meter-arc-bg" d="M 55 118 A 105 105 0 0 1 265 118" />
+
+                    <!-- 刻度线和标签：从 -135° 到 +135° 共 7 个主刻度 -->
+                    <g id="meter-ticks">
+                        <!-- 由 JS 动态生成 -->
+                    </g>
+
+                    <!-- 指针 -->
+                    <g class="meter-needle" id="meter-needle">
+                        <line class="meter-needle-line" x1="160" y1="130" x2="160" y2="35" />
+                        <circle class="meter-needle-hub" cx="160" cy="130" r="7" />
+                    </g>
+
+                    <!-- 数字显示 -->
+                    <text class="meter-value" id="meter-value" x="160" y="90">0.00</text>
+                    <text class="meter-unit" x="160" y="106">V</text>
+
+                    <!-- 零线 -->
+                    <line class="meter-zero" x1="160" y1="118" x2="160" y2="122" />
+
+                    <!-- 标签 -->
+                    <text class="meter-label" x="160" y="30">感应电动势</text>
+                </svg>
+            </div>
+        </div>
+
+        <!-- 右侧控制面板 -->
+        <div id="panel">
+            <div class="panel-title">
+                ⚡ 法拉第电磁感应
+            </div>
+
+            <!-- 自动移动控制 -->
+            <div class="section">
+                <div class="section-label">🔄 自动移动</div>
+                <div class="switch-row">
+                    <span class="switch-label">
+                        🚀 磁铁自动往复
+                        <span class="hint">匀速</span>
+                    </span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="autoToggle">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 速度 -->
+            <div class="section">
+                <div class="section-label">🚀 移动速度</div>
+                <div class="slider-group">
+                    <label>速度倍率 <span id="speedValue">1.0x</span></label>
+                    <input type="range" id="speedSlider" min="0.1" max="3.0" step="0.1" value="1.0" />
+                </div>
+            </div>
+
+            <!-- 显示控制 -->
+            <div class="section">
+                <div class="section-label">👁️ 显示控制</div>
+                <div class="switch-row" style="margin-bottom:6px;">
+                    <span class="switch-label">🧲 磁场线</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="showFieldLines" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="switch-row">
+                    <span class="switch-label">➡️ 方向箭头</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="showArrows" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 磁场线密度 -->
+            <div class="section">
+                <div class="section-label">📊 磁场线密度</div>
+                <div class="slider-group">
+                    <label>密度系数 <span id="densityValue">2</span></label>
+                    <input type="range" id="densitySlider" min="1" max="4" step="1" value="2" />
+                </div>
+            </div>
+
+            <!-- 操作提示 -->
+            <div class="section">
+                <div class="section-label">🖱️ 手动操作</div>
+                <p style="font-size:12px; color:#7a90aa; line-height:1.7; margin:2px 0;">
+                    • <span style="color:#b0c8e0;">按住左键拖动</span> 移动磁铁<br>
+                    • <span style="color:#b0c8e0;">按住右键拖动</span> 旋转视角<br>
+                    • <span style="color:#b0c8e0;">鼠标滚轮</span> 缩放视图<br>
+                    • <span style="color:#b0c8e0;">键盘 ← →</span> 微调磁铁
+                </p>
+            </div>
+
+            <!-- 图例 -->
+            <div class="section" style="border-color:rgba(255,255,255,0.03);">
+                <div class="section-label" style="margin-bottom:4px;">🎨 图例</div>
+                <div class="legend-grid">
+                    <span class="legend-item"><span class="legend-dot" style="background:#ff3333;"></span> N极</span>
+                    <span class="legend-item"><span class="legend-dot" style="background:#3366ff;"></span> S极</span>
+                </div>
+                <div class="legend-grid" style="margin-top:6px;">
+                    <span class="legend-item" style="font-size:11px; color:#6a8aaa;">
+                        ➡️ 箭头方向：N极(红) → S极(蓝)
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 使用 jsDelivr CDN -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+    window.addEventListener('error', (e) => {
+        const errEl = document.getElementById('loading-err');
+        if (errEl && errEl.textContent === '') {
+            errEl.textContent = '加载错误：' + (e.message || '未知错误') +
+                '。请检查网络连接。';
+        }
+    });
+
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    const loadingEl = document.getElementById('loading');
+
+    try {
+        // ============================================================
+        //  1. 场景 / 相机 / 渲染器
+        // ============================================================
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0f16);
+
+        const canvasWrap = document.getElementById('canvas-wrap');
+        const camera = new THREE.PerspectiveCamera(
+            45, canvasWrap.clientWidth / Math.max(canvasWrap.clientHeight, 1), 0.1, 1000
+        );
+        camera.position.set(7, 5, 11);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(canvasWrap.clientWidth, canvasWrap.clientHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.domElement.style.display = 'block';
+        canvasWrap.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.08;
+        controls.enableZoom = true;
+        controls.enablePan = false;
+        controls.target.set(0, 0, 0);
+        controls.maxPolarAngle = Math.PI / 2;
+        controls.mouseButtons = {
+            LEFT: null,
+            MIDDLE: THREE.MOUSE.DOLLY,
+            RIGHT: THREE.MOUSE.ROTATE
+        };
+
+        // ============================================================
+        //  2. 光照
+        // ============================================================
+        scene.add(new THREE.AmbientLight(0x707090, 1.3));
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+        dirLight.position.set(6, 10, 8);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.set(1024, 1024);
+        const d = 12;
+        dirLight.shadow.camera.left = -d;
+        dirLight.shadow.camera.right = d;
+        dirLight.shadow.camera.top = d;
+        dirLight.shadow.camera.bottom = -d;
+        dirLight.shadow.camera.near = 1;
+        dirLight.shadow.camera.far = 25;
+        scene.add(dirLight);
+
+        const fillLight = new THREE.PointLight(0x4466ff, 0.6);
+        fillLight.position.set(-6, 2, -6);
+        scene.add(fillLight);
+
+        const magnetLight = new THREE.PointLight(0xffaa33, 0.9, 12);
+        magnetLight.position.set(0, 1.5, 0);
+        scene.add(magnetLight);
+
+        // ============================================================
+        //  3. 背景星空
+        // ============================================================
+        (function createStars() {
+            const count = 2000;
+            const positions = new Float32Array(count * 3);
+            for (let i = 0; i < count * 3; i += 3) {
+                positions[i]     = (Math.random() - 0.5) * 1500;
+                positions[i + 1] = (Math.random() - 0.5) * 1500;
+                positions[i + 2] = (Math.random() - 0.5) * 1500;
+            }
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const mat = new THREE.PointsMaterial({
+                color: 0xffffff, size: 0.6, transparent: true, opacity: 0.85,
+                sizeAttenuation: true, depthWrite: false
+            });
+            const stars = new THREE.Points(geo, mat);
+            scene.add(stars);
+            scene.userData.stars = stars;
+        })();
+
+        // ============================================================
+        //  4. 地面
+        // ============================================================
+        const gridHelper = new THREE.GridHelper(20, 20, 0x3366ff, 0x1a2a55);
+        gridHelper.position.y = -1.8;
+        gridHelper.material.transparent = true;
+        gridHelper.material.opacity = 0.5;
+        scene.add(gridHelper);
+
+        const floor = new THREE.Mesh(
+            new THREE.PlaneGeometry(20, 20),
+            new THREE.MeshStandardMaterial({
+                color: 0x0f0f22, transparent: true, opacity: 0.5, side: THREE.DoubleSide
+            })
+        );
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -1.8;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        // ============================================================
+        //  5. 螺线管线圈
+        // ============================================================
+        const coilGroup = new THREE.Group();
+        const coilRadius = 2.0;
+        const coilHeight = 3.0;
+        const coilTurns = 10;
+        const tubeR = 0.06;
+
+        const spiralPoints = [];
+        const totalAngle = 2 * Math.PI * coilTurns;
+        for (let i = 0; i <= 500; i++) {
+            const t = i / 500;
+            const theta = t * totalAngle;
+            spiralPoints.push(new THREE.Vector3(
+                coilRadius * Math.cos(theta),
+                coilRadius * Math.sin(theta),
+                -coilHeight / 2 + coilHeight * t
+            ));
+        }
+        const spiralCurve = new THREE.CatmullRomCurve3(spiralPoints);
+        const coilMesh = new THREE.Mesh(
+            new THREE.TubeGeometry(spiralCurve, 700, tubeR, 8, false),
+            new THREE.MeshStandardMaterial({
+                color: 0xffaa33,
+                emissive: 0x442200,
+                emissiveIntensity: 0.4,
+                roughness: 0.25,
+                metalness: 0.9
+            })
+        );
+        coilMesh.castShadow = true;
+        coilMesh.receiveShadow = true;
+        coilGroup.add(coilMesh);
+
+        const wireMat = new THREE.MeshStandardMaterial({ color: 0xcc8844, roughness: 0.4, metalness: 0.8 });
+        const w1 = new THREE.Mesh(new THREE.TubeGeometry(
+            new THREE.CatmullRomCurve3([
+                spiralPoints[0].clone(),
+                spiralPoints[0].clone().add(new THREE.Vector3(1.0, 0, -0.5)),
+                spiralPoints[0].clone().add(new THREE.Vector3(1.6, -0.8, -1.0))
+            ]), 16, 0.04, 6, false), wireMat);
+        w1.castShadow = true;
+        coilGroup.add(w1);
+
+        const w2 = new THREE.Mesh(new THREE.TubeGeometry(
+            new THREE.CatmullRomCurve3([
+                spiralPoints[spiralPoints.length - 1].clone(),
+                spiralPoints[spiralPoints.length - 1].clone().add(new THREE.Vector3(1.0, 0, 0.5)),
+                spiralPoints[spiralPoints.length - 1].clone().add(new THREE.Vector3(1.6, 0.8, 1.0))
+            ]), 16, 0.04, 6, false), wireMat);
+        w2.castShadow = true;
+        coilGroup.add(w2);
+
+        scene.add(coilGroup);
+
+        // ============================================================
+        //  6. 磁铁（不透明，含内部磁单极子）
+        // ============================================================
+        const magnetGroup = new THREE.Group();
+        const mLen = 2.0, mW = 0.8, mH = 0.8;
+        const halfLen = mLen / 2;
+
+        const nMesh = new THREE.Mesh(
+            new THREE.BoxGeometry(mW, mH, mLen / 2),
+            new THREE.MeshStandardMaterial({
+                color: 0xff3333,
+                emissive: 0x440000,
+                emissiveIntensity: 0.5,
+                roughness: 0.35,
+                metalness: 0.15
+            })
+        );
+        nMesh.position.z = mLen / 4;
+        nMesh.castShadow = true;
+        nMesh.receiveShadow = true;
+        magnetGroup.add(nMesh);
+
+        const sMesh = new THREE.Mesh(
+            new THREE.BoxGeometry(mW, mH, mLen / 2),
+            new THREE.MeshStandardMaterial({
+                color: 0x3366ff,
+                emissive: 0x001144,
+                emissiveIntensity: 0.5,
+                roughness: 0.35,
+                metalness: 0.15
+            })
+        );
+        sMesh.position.z = -mLen / 4;
+        sMesh.castShadow = true;
+        sMesh.receiveShadow = true;
+        magnetGroup.add(sMesh);
+
+        magnetGroup.add(new THREE.LineSegments(
+            new THREE.EdgesGeometry(new THREE.BoxGeometry(mW * 1.02, mH * 1.02, mLen * 1.02)),
+            new THREE.LineBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.8 })
+        ));
+
+        magnetGroup.position.set(0, 0, -3.0);
+        scene.add(magnetGroup);
+
+        // ============================================================
+        //  7. 磁单极子（内部）
+        // ============================================================
+        const monopoleGroup = new THREE.Group();
+        magnetGroup.add(monopoleGroup);
+
+        const posMonopoleZ = halfLen - 0.15;
+        const negMonopoleZ = -halfLen + 0.15;
+
+        const posMonopole = new THREE.Group();
+        posMonopole.position.set(0, 0, posMonopoleZ);
+        monopoleGroup.add(posMonopole);
+
+        posMonopole.add(new THREE.Mesh(
+            new THREE.SphereGeometry(0.06, 16, 16),
+            new THREE.MeshStandardMaterial({
+                color: 0xff4444, emissive: 0xff2222, emissiveIntensity: 1.2,
+                roughness: 0.3, metalness: 0.2
+            })
+        ));
+        posMonopole.add(new THREE.Mesh(
+            new THREE.SphereGeometry(0.12, 12, 12),
+            new THREE.MeshBasicMaterial({
+                color: 0xff5555, transparent: true, opacity: 0.35,
+                depthWrite: false, blending: THREE.AdditiveBlending
+            })
+        ));
+        posMonopole.add(new THREE.PointLight(0xff4444, 0.8, 3));
+
+        const negMonopole = new THREE.Group();
+        negMonopole.position.set(0, 0, negMonopoleZ);
+        monopoleGroup.add(negMonopole);
+
+        negMonopole.add(new THREE.Mesh(
+            new THREE.SphereGeometry(0.06, 16, 16),
+            new THREE.MeshStandardMaterial({
+                color: 0x4488ff, emissive: 0x2266ff, emissiveIntensity: 1.2,
+                roughness: 0.3, metalness: 0.2
+            })
+        ));
+        negMonopole.add(new THREE.Mesh(
+            new THREE.SphereGeometry(0.12, 12, 12),
+            new THREE.MeshBasicMaterial({
+                color: 0x5599ff, transparent: true, opacity: 0.35,
+                depthWrite: false, blending: THREE.AdditiveBlending
+            })
+        ));
+        negMonopole.add(new THREE.PointLight(0x4488ff, 0.8, 3));
+
+        // ============================================================
+        //  8. 磁场线系统
+        // ============================================================
+        const fieldLinesGroup = new THREE.Group();
+        magnetGroup.add(fieldLinesGroup);
+
+        const arrowsGroup = new THREE.Group();
+        magnetGroup.add(arrowsGroup);
+
+        const ARROW_SIZE = 0.055;
+        const MONOPOLE_STRENGTH = 1.0;
+
+        function magneticFieldAt(p) {
+            const B = new THREE.Vector3(0, 0, 0);
+            const k = MONOPOLE_STRENGTH;
+            const rN = new THREE.Vector3(0, 0, posMonopoleZ);
+            const rS = new THREE.Vector3(0, 0, negMonopoleZ);
+
+            const dN = new THREE.Vector3().subVectors(p, rN);
+            const rN2 = dN.lengthSq();
+            if (rN2 > 0.0001) {
+                const rN3 = rN2 * Math.sqrt(rN2);
+                B.addScaledVector(dN, k / rN3);
+            }
+
+            const dS = new THREE.Vector3().subVectors(p, rS);
+            const rS2 = dS.lengthSq();
+            if (rS2 > 0.0001) {
+                const rS3 = rS2 * Math.sqrt(rS2);
+                B.addScaledVector(dS, -k / rS3);
+            }
+
+            return B;
+        }
+
+        function traceFieldLine(startPos) {
+            const points = [startPos.clone()];
+            let p = startPos.clone();
+
+            const step = 0.09;
+            const maxSteps = 500;
+            const bound = 8.0;
+
+            for (let i = 0; i < maxSteps; i++) {
+                const B = magneticFieldAt(p);
+                const Bmag = B.length();
+                if (Bmag < 1e-6) break;
+
+                const dir = B.clone().divideScalar(Bmag);
+                const midP = p.clone().addScaledVector(dir, step * 0.5);
+                const Bmid = magneticFieldAt(midP);
+                const BmidMag = Bmid.length();
+                if (BmidMag < 1e-6) break;
+                const midDir = Bmid.clone().divideScalar(BmidMag);
+
+                p = p.clone().addScaledVector(midDir, step);
+                points.push(p.clone());
+
+                const distToS = p.distanceTo(new THREE.Vector3(0, 0, negMonopoleZ));
+                if (distToS < 0.18) break;
+
+                const distToN = p.distanceTo(new THREE.Vector3(0, 0, posMonopoleZ));
+                if (distToN < 0.12 && i > 5) break;
+
+                if (p.length() > bound) break;
+            }
+
+            return points;
+        }
+
+        function buildFieldLines(density) {
+            while (fieldLinesGroup.children.length > 0) {
+                const child = fieldLinesGroup.children[0];
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) child.material.dispose();
+                fieldLinesGroup.remove(child);
+            }
+            while (arrowsGroup.children.length > 0) {
+                const child = arrowsGroup.children[0];
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) child.material.dispose();
+                arrowsGroup.remove(child);
+            }
+
+            const numAzimuth = density === 1 ? 8 : (density === 2 ? 12 : (density === 3 ? 18 : 24));
+            const numRings = density === 1 ? 1 : (density === 2 ? 2 : (density === 3 ? 3 : 4));
+            const totalLines = numAzimuth * numRings;
+
+            for (let i = 0; i < totalLines; i++) {
+                const phi = Math.acos(1 - 2 * (i + 0.5) / totalLines);
+                const theta = Math.PI * (1 + Math.sqrt(5)) * i;
+
+                const dir = new THREE.Vector3(
+                    Math.sin(phi) * Math.cos(theta),
+                    Math.sin(phi) * Math.sin(theta),
+                    Math.cos(phi)
+                );
+
+                const startPos = new THREE.Vector3(0, 0, posMonopoleZ)
+                    .addScaledVector(dir, 0.1);
+
+                const points = traceFieldLine(startPos);
+                if (points.length < 3) continue;
+
+                const geometry = new THREE.BufferGeometry().setFromPoints(points);
+
+                const colors = [];
+                for (let k = 0; k < points.length; k++) {
+                    const p = points[k];
+                    const dN = p.distanceTo(new THREE.Vector3(0, 0, posMonopoleZ));
+                    const dS = p.distanceTo(new THREE.Vector3(0, 0, negMonopoleZ));
+                    const dMin = Math.min(dN, dS);
+                    const strength = Math.min(1, 1.2 / (1 + dMin * 1.5));
+
+                    let r, g, b;
+                    if (strength < 0.4) {
+                        const s = strength / 0.4;
+                        r = 0.3 * s;
+                        g = 0.4 + 0.3 * s;
+                        b = 1.0;
+                    } else if (strength < 0.7) {
+                        const s = (strength - 0.4) / 0.3;
+                        r = 0.3 + 0.7 * s;
+                        g = 0.7 + 0.3 * s;
+                        b = 1.0 - 0.7 * s;
+                    } else {
+                        const s = (strength - 0.7) / 0.3;
+                        r = 1.0;
+                        g = 1.0 - 0.5 * s;
+                        b = 0.3 - 0.3 * s;
+                    }
+                    colors.push(r, g, b);
+                }
+
+                geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+                const material = new THREE.LineBasicMaterial({
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: 0.75,
+                    depthWrite: false
+                });
+
+                fieldLinesGroup.add(new THREE.Line(geometry, material));
+
+                const arrowFractions = [0.15, 0.4, 0.65, 0.9];
+                arrowFractions.forEach(frac => {
+                    const idx = Math.floor(points.length * frac);
+                    if (idx < 1 || idx >= points.length - 1) return;
+
+                    const arrowPos = points[idx];
+                    const nextPos = points[idx + 1];
+                    const arrowDir = new THREE.Vector3().subVectors(nextPos, arrowPos);
+                    if (arrowDir.length() < 1e-6) return;
+                    arrowDir.normalize();
+
+                    const colorIdx = idx * 3;
+                    const r = colors[colorIdx];
+                    const g = colors[colorIdx + 1];
+                    const b = colors[colorIdx + 2];
+
+                    const cone = new THREE.Mesh(
+                        new THREE.ConeGeometry(ARROW_SIZE * 0.9, ARROW_SIZE * 2.2, 6),
+                        new THREE.MeshStandardMaterial({
+                            color: new THREE.Color(r, g, b),
+                            emissive: new THREE.Color(r, g, b),
+                            emissiveIntensity: 0.8,
+                            transparent: true,
+                            opacity: 0.9,
+                            roughness: 0.4
+                        })
+                    );
+                    cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), arrowDir);
+                    cone.position.copy(arrowPos);
+                    arrowsGroup.add(cone);
+                });
+            }
+        }
+
+        // ============================================================
+        //  9. 电动势计算与指针表盘
+        // ============================================================
+        const phiMax = 1.0, sigma = 1.2;
+        let prevPhi = phiMax * Math.exp(-(magnetGroup.position.z ** 2) / (2 * sigma * sigma));
+
+        // 平滑后的电动势（用于显示）
+        let smoothedEMF = 0;
+        // 原始电动势（用于指针，响应稍快）
+        let rawEMF = 0;
+
+        // 表盘范围（伏特）
+        const METER_MAX = 3.0;
+
+        // 表盘角度范围：-135° 到 +135°
+        const METER_ANGLE_MIN = -135;
+        const METER_ANGLE_MAX = 135;
+
+        const needleEl = document.getElementById('meter-needle');
+        const meterValueEl = document.getElementById('meter-value');
+        const emfIndicatorEl = document.getElementById('emf-indicator');
+
+        // 生成表盘刻度
+        (function buildMeterTicks() {
+            const ticksGroup = document.getElementById('meter-ticks');
+            const cx = 160, cy = 130;
+            const rOuter = 105;
+            const rMajor = 88;
+            const rMinor = 95;
+            const rLabel = 76;
+
+            // 主刻度：7 个（-135° 到 +135°，每 45° 一个）
+            for (let i = 0; i <= 6; i++) {
+                const angleDeg = METER_ANGLE_MIN + (i / 6) * (METER_ANGLE_MAX - METER_ANGLE_MIN);
+                const angleRad = (angleDeg - 90) * Math.PI / 180; // 让 0° 指向正上方
+                // 实际上我们希望 -135° 指向左下，+135° 指向右下
+                // 在 SVG 中，角度从 +x 轴开始逆时针。我们的圆弧从 55,118 到 265,118，
+                // 圆心 (160,130)，半径约 105。左端点角度约 -160°，右端点约 -20°。
+                // 所以我们使用与圆弧一致的参数：角度从 -160° 到 -20° 映射到 -135° 到 +135° 的读数。
+            }
+
+            // 直接使用圆弧的几何：圆心 (160,130)，半径 105。
+            // 圆弧起点 (55,118) 对应角度 atan2(118-130, 55-160) = atan2(-12, -105) ≈ -173.5°
+            // 但我们的圆弧路径是 A 105 105 0 0 1 265 118，说明是大弧？不，sweep=1 表示顺时针。
+            // 实际上从 (55,118) 顺时针到 (265,118) 经过上方，是一个约 200° 的弧。
+            // 为了简化，我们直接用参数方程放置刻度。
+            // 圆弧的圆心 (160,130)，半径 105。起始角 ≈ -173.5°（在 SVG 坐标系中，y 向下，所以实际是左上）
+            // 终止角 ≈ -6.5°（右上）。
+            // 但我们希望刻度对称，从 -160° 到 -20°（以正上方为 0° 不方便）。
+            // 改为：使用极角 phi，从 200° 到 340°（在数学坐标系中，y 向下时角度顺时针增加）。
+            // 简单方案：直接计算每个刻度在圆弧上的位置。
+            // 圆弧上点的参数：x = 160 + 105*cos(a), y = 130 + 105*sin(a)
+            // 我们需要 a 从约 190° 到约 350°（因为 y 向下，sin 为负表示上方）。
+            // 测试：a=190° -> cos=-0.985, sin=-0.174 -> x=56.6, y=111.8 （接近 55,118）
+            // a=350° -> cos=0.985, sin=-0.174 -> x=263.4, y=111.8 （接近 265,118）
+            // 所以 a 范围 190° 到 350°，对应读数 -135 到 +135。
+            const aStart = 190, aEnd = 350;
+            const totalTicks = 28; // 28 个刻度（包括主刻度）
+
+            for (let i = 0; i <= totalTicks; i++) {
+                const t = i / totalTicks;
+                const aDeg = aStart + t * (aEnd - aStart);
+                const aRad = aDeg * Math.PI / 180;
+
+                const isMajor = (i % 4 === 0); // 每 4 个刻度一个主刻度
+
+                const x1 = 160 + rOuter * Math.cos(aRad);
+                const y1 = 130 + rOuter * Math.sin(aRad);
+                const r2 = isMajor ? rMajor : rMinor;
+                const x2 = 160 + r2 * Math.cos(aRad);
+                const y2 = 130 + r2 * Math.sin(aRad);
+
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', x1.toFixed(1));
+                line.setAttribute('y1', y1.toFixed(1));
+                line.setAttribute('x2', x2.toFixed(1));
+                line.setAttribute('y2', y2.toFixed(1));
+                line.setAttribute('class', isMajor ? 'meter-tick meter-tick-major' : 'meter-tick');
+                ticksGroup.appendChild(line);
+
+                // 主刻度标签
+                if (isMajor) {
+                    const reading = -METER_MAX + (i / totalTicks) * (2 * METER_MAX);
+                    const lx = 160 + rLabel * Math.cos(aRad);
+                    const ly = 130 + rLabel * Math.sin(aRad);
+                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.setAttribute('x', lx.toFixed(1));
+                    text.setAttribute('y', (ly + 3).toFixed(1));
+                    text.setAttribute('class', 'meter-tick-label');
+                    text.textContent = reading.toFixed(1);
+                    ticksGroup.appendChild(text);
+                }
+            }
+        })();
+
+        // 将电动势值映射到指针角度
+        function emfToAngle(emf) {
+            // 限制在 [-METER_MAX, METER_MAX]
+            const clamped = Math.max(-METER_MAX, Math.min(METER_MAX, emf));
+            const t = (clamped + METER_MAX) / (2 * METER_MAX);
+            // 映射到圆弧角度范围：190° 到 350°
+            const aDeg = 190 + t * (350 - 190);
+            // SVG 旋转：默认指针竖直向上（0°），需要旋转到目标角度
+            // 指针初始方向：从 (160,130) 到 (160,35)，即竖直向上，对应角度 -90°（在 SVG 坐标系中）。
+            // 目标方向的角度为 aDeg（从 +x 轴起算，顺时针为正，因为 y 向下）。
+            // 旋转角度 = aDeg - (-90) = aDeg + 90
+            return aDeg + 90;
+        }
+
+        // ============================================================
+        //  10. 自动移动控制
+        // ============================================================
+        let autoMove = false;
+        let autoSpeed = 1.0;
+        const AUTO_AMPLITUDE = 4.0;
+        const AUTO_BASE_SPEED = 2.0;
+        let autoPos = magnetGroup.position.z;
+        let autoDir = 1;
+
+        const autoToggle = document.getElementById('autoToggle');
+        const speedSlider = document.getElementById('speedSlider');
+        const speedValue = document.getElementById('speedValue');
+        const densitySlider = document.getElementById('densitySlider');
+        const densityValue = document.getElementById('densityValue');
+
+        autoToggle.addEventListener('change', (e) => {
+            autoMove = e.target.checked;
+            if (autoMove) {
+                autoPos = magnetGroup.position.z;
+                autoDir = autoPos < 0 ? 1 : -1;
+            }
+        });
+
+        speedSlider.addEventListener('input', (e) => {
+            autoSpeed = parseFloat(e.target.value);
+            speedValue.textContent = autoSpeed.toFixed(1) + 'x';
+            document.getElementById('info-speed').textContent = autoSpeed.toFixed(1) + 'x';
+        });
+
+        let currentDensity = 2;
+        densitySlider.addEventListener('input', (e) => {
+            currentDensity = parseInt(e.target.value);
+            densityValue.textContent = currentDensity;
+            buildFieldLines(currentDensity);
+        });
+
+        document.getElementById('showFieldLines').addEventListener('change', (e) => {
+            fieldLinesGroup.visible = e.target.checked;
+        });
+        document.getElementById('showArrows').addEventListener('change', (e) => {
+            arrowsGroup.visible = e.target.checked;
+        });
+
+        // ============================================================
+        //  11. 拖动逻辑
+        // ============================================================
+        let isDragging = false;
+        let lastX = 0;
+        let targetMagnetZ = magnetGroup.position.z;
+        const SENSITIVITY = 10.0;
+
+        const canvas = renderer.domElement;
+        const camRight = new THREE.Vector3();
+        const camForward = new THREE.Vector3();
+        const camUp = new THREE.Vector3();
+
+        canvas.addEventListener('pointerdown', (e) => {
+            if (e.button === 0) {
+                isDragging = true;
+                lastX = e.clientX;
+                targetMagnetZ = magnetGroup.position.z;
+                controls.enabled = false;
+                canvas.style.cursor = 'grabbing';
+                e.preventDefault();
+            }
+        });
+
+        window.addEventListener('pointermove', (e) => {
+            if (isDragging) {
+                const dx = e.clientX - lastX;
+                lastX = e.clientX;
+
+                camera.matrixWorld.extractBasis(camRight, camUp, camForward);
+                const zProjection = camRight.z;
+
+                targetMagnetZ += dx * zProjection * (SENSITIVITY / window.innerWidth) * 2;
+                targetMagnetZ = Math.max(-5.0, Math.min(5.0, targetMagnetZ));
+            }
+        });
+
+        window.addEventListener('pointerup', (e) => {
+            if (e.button === 0 && isDragging) {
+                isDragging = false;
+                controls.enabled = true;
+                canvas.style.cursor = 'default';
+                if (autoMove) {
+                    autoPos = magnetGroup.position.z;
+                    if (autoPos >= AUTO_AMPLITUDE - 0.1) autoDir = -1;
+                    else if (autoPos <= -AUTO_AMPLITUDE + 0.1) autoDir = 1;
+                }
+            }
+        });
+
+        window.addEventListener('pointercancel', () => {
+            if (isDragging) {
+                isDragging = false;
+                controls.enabled = true;
+                canvas.style.cursor = 'default';
+            }
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                const dir = e.key === 'ArrowRight' ? 1 : -1;
+                targetMagnetZ += dir * 0.15;
+                targetMagnetZ = Math.max(-5.0, Math.min(5.0, targetMagnetZ));
+                if (autoMove) {
+                    autoPos = targetMagnetZ;
+                    if (autoPos >= AUTO_AMPLITUDE - 0.1) autoDir = -1;
+                    else if (autoPos <= -AUTO_AMPLITUDE + 0.1) autoDir = 1;
+                }
+            }
+        });
+
+        // ============================================================
+        //  12. 初始化
+        // ============================================================
+        buildFieldLines(currentDensity);
+
+        if (loadingEl) loadingEl.remove();
+
+        // ============================================================
+        //  13. 窗口自适应
+        // ============================================================
+        window.addEventListener('resize', () => {
+            const w = canvasWrap.clientWidth;
+            const h = canvasWrap.clientHeight;
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+            renderer.setSize(w, h);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        });
+
+        // ============================================================
+        //  14. 动画循环
+        // ============================================================
+        const clock = new THREE.Clock();
+
+        // 数字显示节流
+        let lastTextUpdate = 0;
+        const TEXT_UPDATE_INTERVAL = 0.1; // 秒
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = Math.min(clock.getDelta(), 0.1);
+
+            // 自动移动
+            if (autoMove && !isDragging) {
+                const step = AUTO_BASE_SPEED * autoSpeed * delta;
+                autoPos += autoDir * step;
+                if (autoPos >= AUTO_AMPLITUDE) {
+                    autoPos = AUTO_AMPLITUDE;
+                    autoDir = -1;
+                } else if (autoPos <= -AUTO_AMPLITUDE) {
+                    autoPos = -AUTO_AMPLITUDE;
+                    autoDir = 1;
+                }
+                targetMagnetZ = autoPos;
+            }
+
+            // 平滑跟随
+            magnetGroup.position.z += (targetMagnetZ - magnetGroup.position.z) * 0.18;
+
+            magnetLight.position.set(0, 1.5, magnetGroup.position.z);
+
+            // 电动势计算
+            const z = magnetGroup.position.z;
+            const phi = phiMax * Math.exp(-(z * z) / (2 * sigma * sigma));
+            const dPhi = delta > 0.001 ? (phi - prevPhi) / delta : 0;
+            const instantEMF = -dPhi * 0.8;
+
+            // 指针用值：中等平滑（响应快但不过冲）
+            rawEMF += (instantEMF - rawEMF) * 0.25;
+
+            // 数字用值：强平滑（避免跳动）
+            smoothedEMF += (instantEMF - smoothedEMF) * 0.08;
+
+            // 更新指针角度
+            const angle = emfToAngle(rawEMF);
+            needleEl.style.transform = `rotate(${angle}deg)`;
+
+            // 数字显示：节流更新
+            const now = performance.now();
+            if (now - lastTextUpdate > TEXT_UPDATE_INTERVAL * 1000) {
+                lastTextUpdate = now;
+                meterValueEl.textContent = smoothedEMF.toFixed(2);
+
+                // 颜色随电动势变化
+                if (Math.abs(smoothedEMF) > 1.5) {
+                    meterValueEl.style.fill = '#ff6644';
+                } else if (Math.abs(smoothedEMF) > 0.6) {
+                    meterValueEl.style.fill = '#ffaa00';
+                } else {
+                    meterValueEl.style.fill = '#00ffaa';
+                }
+            }
+
+            document.getElementById('info-position').textContent = `z = ${magnetGroup.position.z.toFixed(2)}`;
+
+            prevPhi = phi;
+
+            if (scene.userData.stars) {
+                scene.userData.stars.rotation.y += delta * 0.008;
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        console.log('%c⚡ 法拉第电磁感应 · 指针式表盘已启动',
+            'color:#ffaa00; font-weight:bold; font-size:14px;');
+
+    } catch (err) {
+        console.error('初始化失败：', err);
+        const errEl = document.getElementById('loading-err');
+        if (errEl) {
+            errEl.textContent = '初始化失败：' + err.message;
+        }
+        if (loadingEl) loadingEl.style.display = 'block';
+    }
+    </script>
+</body>
+</html>

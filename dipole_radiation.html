@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>振荡电偶极子辐射 — 电动力学仿真</title>
+    <style>
+        :root {
+            --ahnu-blue: #003d7a;
+            --ahnu-gold: #c9a227;
+            --card-bg: #ffffff;
+            --text-main: #2d3748;
+            --text-sub: #718096;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+            min-height: 100vh;
+            color: var(--text-main);
+        }
+
+        .header {
+            background: linear-gradient(90deg, var(--ahnu-blue) 0%, #0056a3 100%);
+            color: white;
+            padding: 0 40px;
+            display: flex;
+            align-items: center;
+            height: 64px;
+            box-shadow: 0 4px 20px rgba(0, 61, 122, 0.25);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header h1 { font-size: 18px; font-weight: 700; letter-spacing: 2px; }
+        .header .back {
+            margin-left: auto;
+            color: white;
+            text-decoration: none;
+            font-size: 13px;
+            opacity: 0.85;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .header .back:hover { opacity: 1; }
+
+        .main {
+            max-width: 1240px;
+            margin: 28px auto;
+            padding: 0 24px;
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 24px;
+        }
+
+        .canvas-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(0, 61, 122, 0.06);
+            padding: 20px;
+            position: relative;
+        }
+        .canvas-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .canvas-header h2 { font-size: 16px; color: var(--ahnu-blue); font-weight: 700; }
+        .legend { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-sub); }
+        .legend-bar {
+            width: 72px; height: 8px; border-radius: 4px;
+            background: linear-gradient(90deg, #00bcd4, #ff9800, #f44336);
+        }
+        .legend-bar-b {
+            width: 72px; height: 8px; border-radius: 4px;
+            background: linear-gradient(90deg, #9c27b0, #4caf50, #ffeb3b);
+        }
+        .legend-bar-s {
+            width: 72px; height: 8px; border-radius: 4px;
+            background: linear-gradient(90deg, #4a148c, #ff6f00, #ffab00);
+        }
+        canvas#main {
+            width: 100%; height: 560px;
+            background: #fafbfc;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            cursor: crosshair;
+            touch-action: none;
+            display: block;
+        }
+
+        .controls-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(0, 61, 122, 0.06);
+            padding: 22px;
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+        }
+        .controls-card h3 {
+            font-size: 14px; color: var(--ahnu-blue);
+            margin-bottom: 14px; padding-bottom: 8px;
+            border-bottom: 2px solid var(--ahnu-gold);
+        }
+        .control-group { margin-bottom: 16px; }
+        .control-group label {
+            display: block; font-size: 12px;
+            color: var(--text-sub); margin-bottom: 6px; font-weight: 600;
+        }
+        .control-row { display: flex; align-items: center; gap: 8px; }
+        .control-row span {
+            font-size: 11px; color: var(--text-sub);
+            min-width: 44px; text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+        input[type="range"] {
+            flex: 1; -webkit-appearance: none; height: 5px;
+            border-radius: 3px; background: #e2e8f0; outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 14px; height: 14px;
+            border-radius: 50%; background: var(--ahnu-blue);
+            cursor: pointer; box-shadow: 0 2px 5px rgba(0, 61, 122, 0.3);
+        }
+        .btn {
+            width: 100%; padding: 9px; border: none; border-radius: 8px;
+            font-size: 13px; font-weight: 600; cursor: pointer;
+            transition: all 0.2s; font-family: inherit;
+        }
+        .btn-primary { background: var(--ahnu-blue); color: white; margin-bottom: 8px; }
+        .btn-primary:hover { background: #0056a3; }
+        .btn-secondary { background: #edf2f7; color: var(--text-main); }
+        .btn-secondary:hover { background: #e2e8f0; }
+
+        .checkbox-group { display: flex; flex-direction: column; gap: 8px; }
+        .checkbox-group label {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 12px; color: var(--text-main); cursor: pointer; font-weight: 500;
+        }
+        .checkbox-group input[type="checkbox"] {
+            width: 15px; height: 15px; accent-color: var(--ahnu-blue);
+        }
+
+        .probe-info {
+            background: #f8fafc; border-radius: 8px; padding: 8px 10px;
+            font-size: 11px; color: var(--text-sub); line-height: 1.6;
+            margin-top: 6px; border-left: 3px solid var(--ahnu-gold);
+        }
+        .probe-info strong { color: var(--text-main); }
+
+        .scope-wrap { margin-top: 16px; padding-top: 16px; border-top: 1px solid #edf2f7; }
+        .scope-wrap h4 { font-size: 12px; color: var(--ahnu-blue); margin-bottom: 8px; }
+        .scope-canvas { width: 100%; height: 90px; background: #0f172a; border-radius: 8px; display: block; }
+        .scope-label { font-size: 11px; color: var(--text-sub); margin-top: 4px; text-align: center; }
+
+        .formula-card {
+            grid-column: 1 / -1;
+            background: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(0, 61, 122, 0.06);
+            padding: 22px 26px;
+        }
+        .formula-card h3 { font-size: 14px; color: var(--ahnu-blue); margin-bottom: 12px; }
+        .formula-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px;
+        }
+        .formula-item {
+            background: #f8fafc; border-radius: 10px; padding: 12px 14px;
+            border-left: 3px solid var(--ahnu-gold);
+        }
+        .formula-item .title { font-size: 11px; color: var(--text-sub); margin-bottom: 5px; font-weight: 600; }
+        .formula-item code {
+            font-family: "Courier New", Consolas, monospace; font-size: 12px;
+            color: var(--text-main); line-height: 1.5; display: block;
+        }
+
+        @media (max-width: 960px) {
+            .main { grid-template-columns: 1fr; }
+            .header { padding: 0 20px; }
+            .controls-card { max-height: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <h1>⚡ 振荡电偶极子辐射仿真</h1>
+        <a class="back" href="index.html">← 返回实验大厅</a>
+    </header>
+
+    <div class="main">
+        <div class="canvas-card">
+            <div class="canvas-header">
+                <h2>电磁场分布（xz 截面，B 垂直于屏幕）</h2>
+                <div style="display:flex; gap:16px; flex-wrap:wrap;">
+                    <div class="legend"><span>E 弱</span><div class="legend-bar"></div><span>E 强</span></div>
+                    <div class="legend"><span>B 弱</span><div class="legend-bar-b"></div><span>B 强</span></div>
+                    <div class="legend"><span>S 弱</span><div class="legend-bar-s"></div><span>S 强</span></div>
+                </div>
+            </div>
+            <canvas id="main" width="860" height="560"></canvas>
+        </div>
+
+        <div class="controls-card">
+            <h3>动画与显示</h3>
+            <div class="control-group">
+                <label>动画速度</label>
+                <div class="control-row">
+                    <input type="range" id="speed" min="0" max="2" step="0.1" value="0.5" />
+                    <span id="speedVal">0.5×</span>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>空间缩放</label>
+                <div class="control-row">
+                    <input type="range" id="zoom" min="10" max="120" step="5" value="60" />
+                    <span id="zoomVal">60</span>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>场强增益</label>
+                <div class="control-row">
+                    <input type="range" id="gain" min="5" max="60" step="1" value="20" />
+                    <span id="gainVal">20</span>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>采样密度</label>
+                <div class="control-row">
+                    <input type="range" id="density" min="14" max="50" step="2" value="28" />
+                    <span id="densityVal">28 px</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>显示选项</label>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" id="showE" checked /> 电场 E 矢量箭头</label>
+                    <label><input type="checkbox" id="showB" checked /> 磁场 B（• 向外，× 向内）</label>
+                    <label><input type="checkbox" id="showS" checked /> 能流 S（坡印廷矢量）</label>
+                    <label><input type="checkbox" id="showWave" checked /> 等相位波前</label>
+                    <label><input type="checkbox" id="showBoundary" checked /> 近场/远场分界线</label>
+                    <label><input type="checkbox" id="showProbe" checked /> 观测点标记 &amp; 示波器</label>
+                    <label><input type="checkbox" id="farFieldOnly" /> <strong>仅显示辐射场（忽略近场）</strong></label>
+                </div>
+            </div>
+
+            <h3 style="margin-top:4px">观测点参数</h3>
+            <div class="control-group">
+                <label>距离 r（可拖拽画布红点）</label>
+                <div class="control-row">
+                    <input type="range" id="probeR" min="0.5" max="10" step="0.1" value="3" />
+                    <span id="probeRVal">3.0</span>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>极角 θ（从 z 轴起算）</label>
+                <div class="control-row">
+                    <input type="range" id="probeTheta" min="0" max="180" step="1" value="90" />
+                    <span id="probeThetaVal">90°</span>
+                </div>
+            </div>
+            <div class="probe-info" id="probeInfo">
+                当前位置：<strong>r = 3.00</strong>, <strong>θ = 90°</strong><br />
+                直角坐标：x = 3.00, z = 0.00
+            </div>
+
+            <button class="btn btn-primary" id="playBtn">⏸ 暂停</button>
+            <button class="btn btn-secondary" id="resetBtn">↺ 重置参数</button>
+
+            <div class="scope-wrap">
+                <h4>观测点示波器</h4>
+                <canvas id="scope" class="scope-canvas" width="296" height="90"></canvas>
+                <div class="scope-label">E<sub>θ</sub> 分量随时间变化</div>
+            </div>
+        </div>
+
+        <div class="formula-card">
+            <h3>物理模型（归一化：k = 1, c = 1, p₀/4πε₀ = 1）</h3>
+            <div class="formula-grid">
+                <div class="formula-item">
+                    <div class="title">电偶极矩</div>
+                    <code>p(t) = p₀ cos(t) ẑ</code>
+                </div>
+                <div class="formula-item">
+                    <div class="title">完整场（三项，推迟时间 tᵣ = t − r）</div>
+                    <code>Eᵣ = 2cosθ [cos(tᵣ)/r³ + sin(tᵣ)/r²]</code>
+                    <code>Eθ = sinθ [cos(tᵣ)/r³ + sin(tᵣ)/r² − cos(tᵣ)/r]</code>
+                </div>
+                <div class="formula-item">
+                    <div class="title">纯辐射场（仅 1/r）</div>
+                    <code>Eᵣ = 0, Eθ = −sinθ cos(tᵣ) / r</code>
+                    <code>Bφ = −sinθ cos(tᵣ) / r</code>
+                </div>
+                <div class="formula-item">
+                    <div class="title">坡印廷矢量（辐射区）</div>
+                    <code>S = E × B / μ₀ ∝ sin²θ cos²(tᵣ) / r² r̂</code>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+/* ============================================================
+   振荡电偶极子辐射仿真
+   坐标：x 水平，z 垂直（偶极子沿 z 轴）
+   归一化：k=1, ω=1, c=1, p₀/(4πε₀)=1
+   关键修正：phase 使用推迟时间 t − r（而非 r − t）
+   ============================================================ */
+
+const canvas = document.getElementById('main');
+const ctx = canvas.getContext('2d');
+const scopeCanvas = document.getElementById('scope');
+const sCtx = scopeCanvas.getContext('2d');
+
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+    CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+        if (r > w / 2) r = w / 2;
+        if (r > h / 2) r = h / 2;
+        this.moveTo(x + r, y);
+        this.lineTo(x + w - r, y);
+        this.quadraticCurveTo(x + w, y, x + w, y + r);
+        this.lineTo(x + w, y + h - r);
+        this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        this.lineTo(x + r, y + h);
+        this.quadraticCurveTo(x, y + h, x, y + h - r);
+        this.lineTo(x, y + r);
+        this.quadraticCurveTo(x, y, x + r, y);
+        return this;
+    };
+}
+
+let t = 0, playing = true, animId;
+const history = [];
+
+const params = {
+    speed: 0.5,
+    scale: 60,
+    gain: 20,
+    step: 28,
+    farFieldOnly: false,
+    showE: true,
+    showB: true,
+    showS: true,
+    showWave: true,
+    showBoundary: true,
+    showProbe: true
+};
+
+const probe = { r: 3, theta: Math.PI / 2 };
+
+const speedIn = document.getElementById('speed');
+const zoomIn  = document.getElementById('zoom');
+const gainIn  = document.getElementById('gain');
+const densityIn = document.getElementById('density');
+const showEIn = document.getElementById('showE');
+const showBIn = document.getElementById('showB');
+const showSIn = document.getElementById('showS');
+const showWIn = document.getElementById('showWave');
+const showBndIn = document.getElementById('showBoundary');
+const showPIn = document.getElementById('showProbe');
+const farFieldIn = document.getElementById('farFieldOnly');
+const probeRIn = document.getElementById('probeR');
+const probeThetaIn = document.getElementById('probeTheta');
+const playBtn = document.getElementById('playBtn');
+const resetBtn = document.getElementById('resetBtn');
+const probeInfo = document.getElementById('probeInfo');
+
+function updateLabels() {
+    document.getElementById('speedVal').textContent = params.speed.toFixed(1) + '×';
+    document.getElementById('zoomVal').textContent = params.scale;
+    document.getElementById('gainVal').textContent = params.gain;
+    document.getElementById('densityVal').textContent = params.step + ' px';
+    document.getElementById('probeRVal').textContent = probe.r.toFixed(1);
+    document.getElementById('probeThetaVal').textContent = Math.round(probe.theta * 180 / Math.PI) + '°';
+
+    const x = probe.r * Math.sin(probe.theta);
+    const z = probe.r * Math.cos(probe.theta);
+    probeInfo.innerHTML =
+        `当前位置：<strong>r = ${probe.r.toFixed(2)}</strong>, <strong>θ = ${Math.round(probe.theta*180/Math.PI)}°</strong><br />` +
+        `直角坐标：x = ${x.toFixed(2)}, z = ${z.toFixed(2)}`;
+}
+
+function syncProbeFromSliders() {
+    probe.r = parseFloat(probeRIn.value);
+    probe.theta = parseFloat(probeThetaIn.value) * Math.PI / 180;
+    updateLabels();
+}
+
+speedIn.addEventListener('input', e => { params.speed = parseFloat(e.target.value); updateLabels(); });
+zoomIn.addEventListener('input', e => { params.scale = parseFloat(e.target.value); updateLabels(); });
+gainIn.addEventListener('input', e => { params.gain = parseFloat(e.target.value); updateLabels(); });
+densityIn.addEventListener('input', e => { params.step = parseFloat(e.target.value); updateLabels(); });
+showEIn.addEventListener('change', e => params.showE = e.target.checked);
+showBIn.addEventListener('change', e => params.showB = e.target.checked);
+showSIn.addEventListener('change', e => params.showS = e.target.checked);
+showWIn.addEventListener('change', e => params.showWave = e.target.checked);
+showBndIn.addEventListener('change', e => params.showBoundary = e.target.checked);
+showPIn.addEventListener('change', e => params.showProbe = e.target.checked);
+farFieldIn.addEventListener('change', e => { params.farFieldOnly = e.target.checked; history.length = 0; });
+probeRIn.addEventListener('input', syncProbeFromSliders);
+probeThetaIn.addEventListener('input', syncProbeFromSliders);
+
+playBtn.addEventListener('click', () => {
+    playing = !playing;
+    playBtn.textContent = playing ? '⏸ 暂停' : '▶ 播放';
+});
+resetBtn.addEventListener('click', () => {
+    t = 0; history.length = 0;
+    params.speed = 0.5; speedIn.value = 0.5;
+    params.scale = 60;  zoomIn.value = 60;
+    params.gain = 20;   gainIn.value = 20;
+    params.step = 28;   densityIn.value = 28;
+    params.farFieldOnly = false; farFieldIn.checked = false;
+    params.showE = true; showEIn.checked = true;
+    params.showB = true; showBIn.checked = true;
+    params.showS = true; showSIn.checked = true;
+    params.showWave = true; showWIn.checked = true;
+    params.showBoundary = true; showBndIn.checked = true;
+    params.showProbe = true; showPIn.checked = true;
+    probe.r = 3; probeRIn.value = 3;
+    probe.theta = Math.PI/2; probeThetaIn.value = 90;
+    updateLabels();
+});
+
+/* ---------- 物理计算（修正：phase = time − r） ---------- */
+function computeE(px, pz, time) {
+    const rho = Math.abs(px);
+    const r = Math.sqrt(px*px + pz*pz);
+    if (r < 0.35) return { x: 0, z: 0, mag: 0 };
+
+    const cosT = pz / r;
+    const sinT = rho / r;
+    const phase = time - r;          // 推迟时间 t − r
+    const cosP = Math.cos(phase);
+    const sinP = Math.sin(phase);
+
+    let Er, Et;
+    if (params.farFieldOnly) {
+        Er = 0;
+        Et = -sinT * cosP / r;
+    } else {
+        Er = 2 * cosT * (cosP/(r*r*r) + sinP/(r*r));
+        Et = sinT * (cosP/(r*r*r) + sinP/(r*r) - cosP/r);
+    }
+
+    const E_rho = Er * sinT + Et * cosT;
+    const E_z   = Er * cosT - Et * sinT;
+    const Ex = (px >= 0 ? 1 : -1) * E_rho;
+    return { x: Ex, z: E_z, mag: Math.sqrt(Ex*Ex + E_z*E_z) };
+}
+
+function computeB(px, pz, time) {
+    const r = Math.sqrt(px*px + pz*pz);
+    if (r < 0.35) return 0;
+    const sinT = Math.sqrt(px*px) / r;
+    const phase = time - r;          // 推迟时间 t − r
+    const cosP = Math.cos(phase);
+    const sinP = Math.sin(phase);
+    if (params.farFieldOnly) {
+        return -sinT * cosP / r;
+    }
+    return sinT * (sinP/(r*r) - cosP/r);
+}
+
+function computeEthetaAtProbe(time) {
+    const r = probe.r;
+    const sinT = Math.sin(probe.theta);
+    const phase = time - r;          // 推迟时间 t − r
+    const cosP = Math.cos(phase);
+    const sinP = Math.sin(phase);
+    if (params.farFieldOnly) {
+        return -sinT * cosP / r;
+    }
+    return sinT * (cosP/(r*r*r) + sinP/(r*r) - cosP/r);
+}
+
+/* ---------- 画布交互 ---------- */
+let isDragging = false;
+
+function screenToProbe(sx, sy) {
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    const sc = params.scale;
+    const dx = (sx - cx) / sc;
+    const dz = -(sy - cy) / sc;
+    const r = Math.max(0.4, Math.min(10, Math.hypot(dx, dz)));
+    let theta = Math.atan2(Math.abs(dx), dz);
+    if (theta < 0) theta += Math.PI;
+    return { r, theta };
+}
+
+canvas.addEventListener('pointerdown', e => {
+    const rect = canvas.getBoundingClientRect();
+    const sx = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const sy = (e.clientY - rect.top) * (canvas.height / rect.height);
+    const cx = canvas.width / 2, cy = canvas.height / 2, sc = params.scale;
+    const psx = cx + probe.r * Math.sin(probe.theta) * sc;
+    const psy = cy - probe.r * Math.cos(probe.theta) * sc;
+    if (Math.hypot(sx - psx, sy - psy) < 24) {
+        isDragging = true;
+        canvas.style.cursor = 'grabbing';
+        canvas.setPointerCapture(e.pointerId);
+    }
+});
+
+canvas.addEventListener('pointermove', e => {
+    if (!isDragging) return;
+    const rect = canvas.getBoundingClientRect();
+    const sx = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const sy = (e.clientY - rect.top) * (canvas.height / rect.height);
+    const p = screenToProbe(sx, sy);
+    probe.r = p.r; probe.theta = p.theta;
+    probeRIn.value = p.r.toFixed(1);
+    probeThetaIn.value = Math.round(p.theta * 180 / Math.PI);
+    updateLabels();
+});
+
+canvas.addEventListener('pointerup', e => {
+    if (isDragging) {
+        isDragging = false;
+        canvas.style.cursor = 'crosshair';
+        canvas.releasePointerCapture(e.pointerId);
+    }
+});
+
+/* ---------- 对数颜色映射 ---------- */
+function logNorm(val, maxVal) {
+    if (maxVal < 1e-12) return 0;
+    return Math.min(1, Math.log(1 + val) / Math.log(1 + maxVal));
+}
+
+function fieldColorE(mag, maxMag) {
+    const norm = logNorm(mag, maxMag * 0.55 + 0.001);
+    const hue = 200 * (1 - norm);
+    return `hsl(${hue}, ${70 + 30*norm}%, ${50 + 10*norm}%)`;
+}
+function fieldColorB(mag, maxMag) {
+    const norm = logNorm(mag, maxMag * 0.55 + 0.001);
+    const hue = 300 - 240 * norm;
+    return `hsl(${hue}, ${70 + 30*norm}%, ${45 + 25*norm}%)`;
+}
+function fieldColorS(mag, maxMag) {
+    const norm = logNorm(mag, maxMag * 0.55 + 0.001);
+    const hue = 280 - 200 * norm;
+    return `hsl(${hue}, ${70 + 30*norm}%, ${40 + 30*norm}%)`;
+}
+
+/* ---------- 绘制辅助 ---------- */
+function drawArrow(cx, cy, vx, vy, color, len, lw) {
+    if (len < 0.5) return;
+    const angle = Math.atan2(vy, vx);
+    const x2 = cx + Math.cos(angle) * len;
+    const y2 = cy + Math.sin(angle) * len;
+    ctx.strokeStyle = color; ctx.lineWidth = lw || 1.6;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(x2, y2); ctx.stroke();
+    const headLen = Math.min(5, len * 0.3);
+    if (headLen < 1.5) return;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - headLen * Math.cos(angle - 0.45), y2 - headLen * Math.sin(angle - 0.45));
+    ctx.lineTo(x2 - headLen * Math.cos(angle + 0.45), y2 - headLen * Math.sin(angle + 0.45));
+    ctx.closePath(); ctx.fill();
+}
+function drawDot(cx, cy, r, color) {
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(cx, cy, Math.max(r, 1.5), 0, Math.PI*2); ctx.fill();
+}
+function drawCross(cx, cy, s, color) {
+    const size = Math.max(s, 1.5);
+    ctx.strokeStyle = color; ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(cx - size, cy - size); ctx.lineTo(cx + size, cy + size);
+    ctx.moveTo(cx + size, cy - size); ctx.lineTo(cx - size, cy + size);
+    ctx.stroke();
+}
+
+/* ---------- 主循环 ---------- */
+function draw() {
+    const W = canvas.width, H = canvas.height;
+    const cx = W / 2, cy = H / 2, sc = params.scale;
+
+    ctx.fillStyle = '#fafbfc'; ctx.fillRect(0, 0, W, H);
+
+    // 淡网格
+    ctx.strokeStyle = 'rgba(0,61,122,0.035)'; ctx.lineWidth = 1;
+    for (let x = cx % 30; x < W; x += 30) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+    for (let y = cy % 30; y < H; y += 30) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+    // 坐标轴
+    ctx.strokeStyle = 'rgba(0,61,122,0.22)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(cx, 8); ctx.lineTo(cx, H-8); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(8, cy); ctx.lineTo(W-8, cy); ctx.stroke();
+    ctx.fillStyle = '#718096'; ctx.font = '12px Microsoft YaHei';
+    ctx.fillText('z', cx+5, 18); ctx.fillText('x', W-16, cy-5);
+
+    // 近远场分界线
+    if (params.showBoundary && !params.farFieldOnly) {
+        ctx.strokeStyle = 'rgba(201,162,39,0.55)'; ctx.lineWidth = 1.5; ctx.setLineDash([6,4]);
+        ctx.beginPath(); ctx.arc(cx, cy, sc, 0, Math.PI*2); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#c9a227'; ctx.font = '11px Microsoft YaHei';
+        ctx.fillText('近场/远场分界 r = 1', cx + sc + 5, cy - 4);
+    }
+
+    // 等相位波前（动态范围，始终可见）
+    if (params.showWave) {
+        const lam = 2 * Math.PI;
+        const maxR = Math.max(W, H) / sc * 1.2;
+        const nStart = Math.floor((-t - 0.5) / lam) - 1;
+        const nEnd = Math.floor((maxR - t) / lam) + 1;
+        ctx.lineWidth = 2;
+        for (let n = nStart; n <= nEnd; n++) {
+            const rW = t + n * lam;
+            if (rW > 0.4 && rW < maxR) {
+                const alpha = Math.max(0.04, 0.32 - rW * sc / 900);
+                ctx.strokeStyle = `rgba(0,188,212,${alpha})`;
+                ctx.beginPath(); ctx.arc(cx, cy, rW * sc, 0, Math.PI*2); ctx.stroke();
+            }
+        }
+    }
+
+    // 采样
+    const step = params.step;
+    const points = [];
+    let maxMagE = 0, maxMagB = 0, maxMagS = 0;
+    for (let px = step/2; px < W; px += step) {
+        for (let py = step/2; py < H; py += step) {
+            const xPhys = (px - cx) / sc;
+            const zPhys = -(py - cy) / sc;
+            const E = computeE(xPhys, zPhys, t);
+            const B = computeB(xPhys, zPhys, t);
+            const signX = xPhys >= 0 ? 1 : -1;
+            const B_y = B * signX;
+            const Sx = -E.z * B_y;
+            const Sz = E.x * B_y;
+            const Smag = Math.sqrt(Sx*Sx + Sz*Sz);
+            if (E.mag > maxMagE) maxMagE = E.mag;
+            if (Math.abs(B) > maxMagB) maxMagB = Math.abs(B);
+            if (Smag > maxMagS) maxMagS = Smag;
+            points.push({ sx: px, sy: py, E, B, Sx, Sz, Smag });
+        }
+    }
+
+    // 磁场
+    if (params.showB) {
+        for (const p of points) {
+            if (Math.abs(p.B) < 1e-10) continue;
+            const norm = logNorm(Math.abs(p.B), maxMagB * 0.55 + 0.001);
+            const size = 3 + 9 * norm;
+            const color = fieldColorB(Math.abs(p.B), maxMagB);
+            if (p.B > 0) drawDot(p.sx, p.sy, size, color);
+            else drawCross(p.sx, p.sy, size, color);
+        }
+    }
+
+    // 能流 S
+    if (params.showS) {
+        for (const p of points) {
+            if (p.Smag < 1e-10) continue;
+            const norm = logNorm(p.Smag, maxMagS * 0.55 + 0.001);
+            const len = 2 + 18 * Math.atan(norm * 1.5) / (Math.PI/2);
+            const color = fieldColorS(p.Smag, maxMagS);
+            drawArrow(p.sx, p.sy, p.Sx, -p.Sz, color, len, 1.2);
+        }
+    }
+
+    // 电场
+    if (params.showE) {
+        for (const p of points) {
+            if (p.E.mag < 0.001) continue;
+            const rawLen = p.E.mag * params.gain;
+            const len = 3 + 16 * Math.atan(rawLen * 0.5) / (Math.PI/2);
+            const color = fieldColorE(p.E.mag, maxMagE);
+            drawArrow(p.sx, p.sy, p.E.x, -p.E.z, color, len);
+        }
+    }
+
+    // 偶极子
+    const dipLen = 22;
+    const sep = dipLen * Math.cos(t);
+    const qR = 6 + 3 * Math.abs(Math.cos(t));
+    const topY = cy - sep, botY = cy + sep;
+    const topQ = Math.cos(t) >= 0 ? '+' : '−';
+    const topC = Math.cos(t) >= 0 ? '#e53935' : '#1e88e5';
+    const botQ = Math.cos(t) >= 0 ? '−' : '+';
+    const botC = Math.cos(t) >= 0 ? '#1e88e5' : '#e53935';
+
+    ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, topY + (Math.cos(t)>=0 ? -qR : qR));
+    ctx.lineTo(cx, botY - (Math.cos(t)>=0 ? -qR : qR));
+    ctx.stroke();
+
+    function drawQ(x, y, r, color, label) {
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2);
+        const g = ctx.createRadialGradient(x-2, y-2, 1, x, y, r);
+        g.addColorStop(0, '#fff'); g.addColorStop(0.3, color); g.addColorStop(1, color);
+        ctx.fillStyle = g; ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.lineWidth = 1; ctx.stroke();
+        ctx.fillStyle = 'white'; ctx.font = `bold ${Math.round(r*1.1)}px Microsoft YaHei`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(label, x, y);
+    }
+    drawQ(cx, topY, qR, topC, topQ);
+    drawQ(cx, botY, qR, botC, botQ);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+
+    // 观测点
+    if (params.showProbe) {
+        const psx = cx + probe.r * Math.sin(probe.theta) * sc;
+        const psy = cy - probe.r * Math.cos(probe.theta) * sc;
+
+        ctx.strokeStyle = 'rgba(244,67,54,0.3)'; ctx.lineWidth = 1; ctx.setLineDash([3,3]);
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(psx, psy); ctx.stroke();
+        ctx.setLineDash([]);
+
+        if (probe.r * sc > 20) {
+            const arcR = Math.min(probe.r*sc*0.35, 45);
+            ctx.strokeStyle = 'rgba(244,67,54,0.45)'; ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(cx, cy, arcR, -Math.PI/2, -Math.PI/2 + probe.theta);
+            ctx.stroke();
+            ctx.fillStyle = '#f44336'; ctx.font = '11px Microsoft YaHei';
+            const midA = -Math.PI/2 + probe.theta/2;
+            const lx = cx + (arcR + 12) * Math.cos(midA);
+            const ly = cy + (arcR + 12) * Math.sin(midA);
+            ctx.fillText('θ', lx - 5, ly);
+        }
+
+        ctx.fillStyle = '#f44336';
+        ctx.beginPath(); ctx.arc(psx, psy, 5, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.fillStyle = '#f44336'; ctx.font = 'bold 11px Microsoft YaHei';
+        ctx.fillText('P', psx + 8, psy - 8);
+
+        ctx.fillStyle = 'rgba(244,67,54,0.7)'; ctx.font = '11px Microsoft YaHei';
+        ctx.fillText('拖拽红点调节观测点', 14, H - 14);
+    }
+
+    // 信息浮层
+    ctx.fillStyle = 'rgba(255,255,255,0.93)';
+    ctx.strokeStyle = 'rgba(0,61,122,0.08)'; ctx.lineWidth = 1;
+    const iw = 200, ih = 90, ix = W - iw - 14, iy = 14;
+    ctx.beginPath(); ctx.roundRect(ix, iy, iw, ih, 8); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#2d3748'; ctx.font = '12px Microsoft YaHei';
+    ctx.fillText(`时间 t = ${t.toFixed(2)}`, ix+10, iy+20);
+    ctx.fillText(`偶极矩 p = ${Math.cos(t).toFixed(2)} p₀`, ix+10, iy+38);
+    ctx.fillText(`max |E| = ${maxMagE.toFixed(3)}`, ix+10, iy+56);
+    ctx.fillText(`max |B| = ${maxMagB.toFixed(3)}`, ix+10, iy+74);
+    ctx.fillStyle = '#718096'; ctx.font = '11px Microsoft YaHei';
+    ctx.fillText('归一化单位 (k=1, c=1)', ix+10, iy+92);
+
+    // 示波器
+    if (params.showProbe) {
+        const val = computeEthetaAtProbe(t);
+        history.push(val);
+        if (history.length > 200) history.shift();
+
+        const sw = scopeCanvas.width, sh = scopeCanvas.height;
+        sCtx.fillStyle = '#0f172a'; sCtx.fillRect(0, 0, sw, sh);
+        sCtx.strokeStyle = 'rgba(255,255,255,0.06)'; sCtx.lineWidth = 1;
+        for (let i=0; i<sw; i+=28) { sCtx.beginPath(); sCtx.moveTo(i,0); sCtx.lineTo(i,sh); sCtx.stroke(); }
+        for (let i=0; i<sh; i+=22) { sCtx.beginPath(); sCtx.moveTo(0,i); sCtx.lineTo(sw,i); sCtx.stroke(); }
+        sCtx.strokeStyle = 'rgba(255,255,255,0.12)';
+        sCtx.beginPath(); sCtx.moveTo(0, sh/2); sCtx.lineTo(sw, sh/2); sCtx.stroke();
+
+        if (history.length > 1) {
+            sCtx.strokeStyle = '#00e5ff'; sCtx.lineWidth = 1.8;
+            sCtx.beginPath();
+            const xStep = sw / 200, amp = sh * 0.38;
+            for (let i=0; i<history.length; i++) {
+                const x = i * xStep, y = sh/2 - history[i] * amp;
+                i===0 ? sCtx.moveTo(x,y) : sCtx.lineTo(x,y);
+            }
+            sCtx.stroke();
+        }
+        if (history.length) {
+            const ly = sh/2 - history[history.length-1] * (sh*0.38);
+            sCtx.fillStyle = '#ff9800';
+            sCtx.beginPath(); sCtx.arc((history.length-1)*(sw/200), ly, 3, 0, Math.PI*2); sCtx.fill();
+        }
+    }
+
+    if (playing) t += 0.03 * params.speed;
+    animId = requestAnimationFrame(draw);
+}
+
+updateLabels();
+draw();
+</script>
+</body>
+</html>

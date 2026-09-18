@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>布儒斯特角 3D交互可视化（折射率+全反射+布儒斯特角度标记）</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --ahnu-blue: #003d7a; --ahnu-gold: #c9a227; }
+        body { 
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; 
+            background: #0a0a0f; 
+            color: #e0e0e0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .header {
+            background: linear-gradient(90deg, var(--ahnu-blue) 0%, #0056a3 100%);
+            color: white;
+            padding: 0 40px;
+            display: flex;
+            align-items: center;
+            height: 64px;
+            box-shadow: 0 4px 20px rgba(0,61,122,0.25);
+            flex-shrink: 0;
+            z-index: 100;
+        }
+        .header h1 { font-size: 18px; font-weight: 700; letter-spacing: 2px; }
+        .header .back {
+            margin-left: auto;
+            color: white;
+            text-decoration: none;
+            font-size: 13px;
+            opacity: 0.85;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: opacity 0.2s;
+        }
+        .header .back:hover { opacity: 1; }
+        #canvas-container { 
+            flex: 1;
+            position: relative; 
+            overflow: hidden;
+        }
+        #info-panel {
+            position: absolute;
+            top: 79px;
+            left: 15px;
+            background: rgba(10, 15, 30, 0.92);
+            border: 1px solid rgba(100, 150, 255, 0.3);
+            border-radius 12px;
+            padding: 18px 22px;
+            max-width: 400px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+        #info-panel h2 {
+            color: #4fc3f7;
+            font-size: 18px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid rgba(100,150,0.2);
+            padding-bottom: 8px;
+        }
+        #info-panel h3 {
+            color: #81c784;
+            font-size: 14px;
+            margin: 12px 0 6px 0;
+        }
+        #info-panel p, #info-panel li {
+            font-size: 13px;
+            line-height: 1.7;
+            color: #b0b8c8;
+        }
+        #info-panel ul { padding-left: 18px; }
+        #info-panel .highlight {
+            color: #ffab40;
+            font-weight: bold;
+        }
+        #info-panel .formula {
+            background: rgba(255,255,0.05);
+            padding: 6px 10px;
+            border-radius: 6;
+            font-family: 'Courier New', monospace;
+            color: #ce93d8;
+            margin: 6px 0;
+            display: inline-block;
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 12px;
+            z-index: 10;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .btn {
+            background: rgba(20, 30, 60, 0.9);
+            border: 1px solid rgba(100, 150, 255, 0.4);
+            color: #90caf9;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s;
+            backdrop-filter: blur(5px);
+        }
+        .btn:hover {
+            background: rgba(40, 60, 120, 0.9);
+            border-color: #4fc3f7;
+            box-shadow: 0 0 15px rgba(79, 195, 247, 0.3);
+        }
+        .btn.active {
+            background: rgba79, 195, 247, 0.2;
+            border-color: #4fc3f7;
+            color: #4fc3f7;
+        }
+        #angle-slider-container {
+            position: absolute;
+            top: 79px;
+            right: 15px;
+            background: rgba(10, 15, 30, 0.92);
+            border: 1px solid rgba(100, 150, 255, 0.3);
+            border-radius: 12px;
+            padding: 18px 22px;
+            backdrop-filter: blur(10px);
+            text-align: center;
+            z-index: 10;
+            min-width: 340px;
+        }
+        .slider-group {
+            margin-top:14px;
+            text-align:left;
+        }
+        .slider-group label {
+            font-size:12px;
+            color:#90caf9;
+            display:flex;
+            justify-content:space-between;
+            margin-bottom:4px;
+        }
+        .slider-val {
+            color:#ffab40;
+            font-weight:bold;
+        }
+        #angle-slider-container .angle-value {
+            font-size: 36px;
+            color: #4fc3f7;
+            font-weight: bold;
+        }
+        #angle-slider-container .angle-label {
+            font-size: 12px;
+            color: #78909c;
+            margin-top: 4px;
+        }
+        #angle-slider, #n1-slider, #n2-slider {
+            width: 100%;
+            margin-top: 8px;
+            -webkit-appearance: none;
+            height: 6px;
+            border-radius: 3px;
+            background: linear-gradient(to right, #1a237e, #4fc3f7, #1a237e);
+            outline: none;
+        }
+        #angle-slider::-webkit-slider-thumb,
+        #n1-slider::-webkit-slider-thumb,
+        #n2-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #4fc3f7;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(79, 195, 247, 0.5);
+        }
+        .brewster-indicator {
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: bold;
+        }
+        .brewster-indicator.not-brewster {
+            background: rgba(255, 82, 82, 0.15);
+            color: #ff5252;
+            border: 1px solid rgba(255, 82, 82, 0.3);
+        }
+        .brewster-indicator.is-brewster {
+            background: rgba(105, 240, 174, 0.15);
+            color: #69f0ae;
+            border: 1px solid rgba(105, 240, 174, 0.3);
+            animation: pulse 1.5s infinite;
+        }
+        .brewster-indicator.total-reflection {
+            background: rgba(255,152,0,0.18);
+            color: #ffcc80;
+            border: 1px solid rgba(255,152,0,0.4);
+            animation: pulse 1.2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 5px rgba(105, 240, 174, 0.3); }
+            50% { box-shadow: 0 0 20px rgba(105, 240, 174, 0.6); }
+        }
+        #legend {
+            position: absolute;
+            bottom: 80px;
+            right: 15px;
+            background: rgba(10, 15, 30, 0.92);
+            border: 1px solid rgba(100, 150, 255, 0.3);
+            border-radius: 12px;
+            padding: 12px 18px;
+            backdrop-filter: blur(10px);
+            z-index: 10;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 6px 0;
+            font-size: 12px;
+        }
+        .legend-color {
+            width: 20px;
+            height: 3px;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>🔦 全反射与布儒斯特定律</h1>
+        <a class="back" href="index.html">← 返回实验大厅</a>
+    </header>
+    <div id="canvas-container"></div>
+    
+    <div id="info-panel">
+        <h2>🔬 布儒斯特角 & 全反射 3D交互可视化</h2>
+        <p>拖动滑块调节入射角、介质折射率，观察偏振、折射、全反射现象。</p>
+        
+        
+        <h3>操作说明</h3>
+        <ul>
+            <li>🖱️ <b>左键拖拽</b>：旋转视角</li>
+            <li>🖱️ <b>滚轮</b>：缩放</li>
+            <li>👆 <b>滑块</b>：入射角、折射率n₁/n₂</li>
+            <li>👆 <b>按钮</b>：切换偏振显示、自动演示</li>
+        </ul>
+    </div>
+    
+    <div id="angle-slider-container">
+        <div class="angle-value" id="angle-val">56.3°</div>
+        <div class="angle-label">入射角 θᵢ</div>
+        <input type="range" id="angle-slider" min="0" max="89" value="56.3" step="0.1">
+        <!-- 折射率滑块 -->
+        <div class="slider-group">
+            <label>
+                <span>介质1折射率 n₁</span>
+                <span class="slider-val" id="n1-val">1.00</span>
+            </label>
+            <input type="range" id="n1-slider" min="1.0" max="2.0" value="1.0" step="0.01">
+        </div>
+        <div class="slider-group">
+            <label>
+                <span>介质2折射率 n₂</span>
+                <span class="slider-val" id="n2-val">1.50</span>
+            </label>
+            <input type="range" id="n2-slider" min="1.0" max="2.0" value="1.5" step="0.01">
+        </div>
+        <div class="brewster-indicator" id="brewster-status">
+            ✅ 布儒斯特角！反射光为完全线偏振光
+        </div>
+        <div style="margin-top:10px; font-size:11px; color:#78909c;">
+            θᵢ + θₜ = <span id="sum-angle">90.0°</span>
+        </div>
+        <div style="margin-top:6px; font-size:11px; color:#ce93d8;">
+            布儒斯特角 θ_B = <span id="brewster-val">56.3°</span>
+        </div>
+        <div style="margin-top:4px; font-size:11px; color:#ffcc80;">
+            临界角 θ_c = <span id="critical-val">无</span>
+        </div>
+    </div>
+    
+    <div id="legend">
+        <div class="legend-item">
+            <div class="legend-color" style="background:#ffffff;"></div>
+            <span>入射光 (非偏振)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background:#ff5252;"></div>
+            <span>p偏振 (平行入射面)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background:#448aff;"></div>
+            <span>s偏振 (垂直入射面)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background:#69f0ae;"></div>
+            <span>折射光</span>
+        </div>
+        <div class="legend-item">
+            <div style="width:30px; height:12px; background:linear-gradient(90deg, #ff5252, #448aff); border-radius:2px;"></div>
+            <span>正弦波：红=p, 蓝=s</span>
+        </div>
+    </div>
+    
+    <div id="controls">
+        <button class="btn active" id="btn-both" onclick="setMode('both')">两者叠加</button>
+        <button class="btn" id="btn-p" onclick="setMode('p')">仅p偏振</button>
+        <button class="btn" id="btn-s" onclick="setMode('s')">仅s偏振</button>
+        <button class="btn" id="btn-anim" onclick="toggleAnimation()">▶ 自动演示</button>
+    </div>
+    <script>
+        // ============ Three.js 场景设置 ============
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0a12);
+        scene.fog = new THREE.FogExp2(0x0a0a12, 0.015);
+        
+        const container = document.getElementById('canvas-container');
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+        camera.position.set(10, 6, 12);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+        
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.target.set(0, 0, 0);
+        
+        // ============ 光照 ============
+        const ambientLight = new THREE.AmbientLight(0x404060, 0.6);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
+        dirLight.position.set(5, 10, 5);
+        scene.add(dirLight);
+        
+        // ============ 全局变量 ============
+        let n1 = 1.0;
+        let n2 = 1.5;
+        let theta_B = Math.atan(n2 / n1);
+        let theta_c = null; // 临界角，n1>n2才有值
+        let currentTheta_i = theta_B;
+        let currentMode = 'both';
+        let isAnimating = false;
+        let animDirection = 1;
+        let sceneObjects = [];
+        let time = 0;
+        
+        // ============ 文字精灵 ============
+        function createTextSprite(text, color, scale) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 512;
+            canvas.height = 128;
+            ctx.font = 'bold 36px "Microsoft YaHei", sans-serif';
+            ctx.fillStyle = '#' + color.toString(16).padStart(6, '0');
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, 256, 64);
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
+            const sprite = new THREE.Sprite(spriteMat);
+            sprite.scale.set(scale * 5, scale * 1.25, 1);
+            return sprite;
+        }
+        
+        // ============ 介质界面 ============
+        function createInterface() {
+            const group = new THREE.Group();
+            const geom1 = new THREE.PlaneGeometry(30, 30);
+            const mat1 = new THREE.MeshPhysicalMaterial({
+                color: 0x1a237e, transparent: true, opacity: 0.08,
+                side: THREE.DoubleSide, depthWrite: false
+            });
+            const plane1 = new THREE.Mesh(geom1, mat1);
+            plane1.rotation.x = Math.PI / 2;
+            plane1.position.y = 0.01;
+            plane1.renderOrder = -1;
+            group.add(plane1);
+            const geom2 = new THREE.BoxGeometry(30, 8, 30);
+            const mat2 = new THREE.MeshPhysicalMaterial({
+                color: 0x0d47a1, transparent: true, opacity: 0.08,
+                roughness: 0.1, side: THREE.DoubleSide, depthWrite: false
+            });
+            const plane2 = new THREE.Mesh(geom2, mat2);
+            plane2.position.y = -4;
+            plane2.renderOrder = -1;
+            group.add(plane2);
+            const lineGeom = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-15, 0, 0), new THREE.Vector3(15, 0, 0)]);
+            const lineMat = new THREE.LineBasicMaterial({ color: 0x4fc3f7 });
+            const line = new THREE.Line(lineGeom, lineMat);
+            line.renderOrder = 0;
+            group.add(line);
+            const normalGeom = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, -1, 0), new THREE.Vector3(0, 6, 0)]);
+            const normalMat = new THREE.LineDashedMaterial({ color: 0x78909c, dashSize:0.2, gapSize:0.1 });
+            const normal = new THREE.Line(normalGeom, normalMat);
+            normal.computeLineDistances();
+            normal.renderOrder = 0;
+            group.add(normal);
+            const normalLabel = createTextSprite("法线", 0x78909c, 0.35);
+            normalLabel.position.set(0.5, 5.5, 0);
+            group.add(normalLabel);
+            const label1 = createTextSprite(`介质1  n₁ = ${n1.toFixed(2)}`, 0x90caf9, 0.4);
+            label1.position.set(-7, 4, -5);
+            group.add(label1);
+            const label2 = createTextSprite(`介质2  n₂ = ${n2.toFixed(2)}`, 0x81c784, 0.4);
+            label2.position.set(-7, -3, -5);
+            group.add(label2);
+            return group;
+        }
+        scene.add(createInterface());
+        
+        // ============ 波形光线 ============
+        function createWaveRay(start, direction, length, colorP, colorS, intensityP, intensityS, numCycles) {
+            const group = new THREE.Group();
+            const end = start.clone().add(direction.clone().multiplyScalar(length));
+            const k = direction.clone().normalize();
+            const pDir = new THREE.Vector3(-k.y, k.x, 0).normalize();
+            const sDir = new THREE.Vector3(0, 0, 1);
+            const segments = 120;
+            if (intensityP > 0.01) {
+                const pPoints = [];
+                for (let i = 0; i <= segments; i++) {
+                    const t = i / segments;
+                    const pos = new THREE.Vector3().lerpVectors(start, end, t);
+                    const phase = t * numCycles * Math.PI * 2;
+                    const amp = 0.15 * intensityP;
+                    pos.add(pDir.clone().multiplyScalar(Math.sin(phase) * amp));
+                    pPoints.push(pos);
+                }
+                const pCurve = new THREE.CatmullRomCurve3(pPoints);
+                const pTubeGeom = new THREE.TubeGeometry(pCurve, segments, 0.025 * intensityP, 6, false);
+                const pTubeMat = new THREE.MeshBasicMaterial({ color: colorP, transparent:true, opacity:0.9, depthWrite:false });
+                const pTube = new THREE.Mesh(pTubeGeom, pTubeMat);
+                pTube.renderOrder = 1;
+                group.add(pTube);
+                const pGlowGeom = new THREE.TubeGeometry(pCurve, segments, 0.06 * intensityP, 6, false);
+                const pGlowMat = new THREE.MeshBasicMaterial({ color: colorP, transparent:true, opacity:0.12, depthWrite:false });
+                const pGlow = new THREE.Mesh(pGlowGeom, pGlowMat);
+                pGlow.renderOrder = 1;
+                group.add(pGlow);
+            }
+            if (intensityS > 0.01) {
+                const sPoints = [];
+                for (let i = 0; i <= segments; i++) {
+                    const t = i / segments;
+                    const pos = new THREE.Vector3().lerpVectors(start, end, t);
+                    const phase = t * numCycles * Math.PI * 2;
+                    const amp = 0.15 * intensityS;
+                    pos.add(sDir.clone().multiplyScalar(Math.sin(phase) * amp));
+                    sPoints.push(pos);
+                }
+                const sCurve = new THREE.CatmullRomCurve3(sPoints);
+                const sTubeGeom = new THREE.TubeGeometry(sCurve, segments, 0.025 * intensityS, 6, false);
+                const sTubeMat = new THREE.MeshBasicMaterial({ color: colorS, transparent:true, opacity:0.9, depthWrite:false });
+                const sTube = new THREE.Mesh(sTubeGeom, sTubeMat);
+                sTube.renderOrder = 1;
+                group.add(sTube);
+                const sGlowGeom = new THREE.TubeGeometry(sCurve, segments, 0.06 * intensityS, 6, false);
+                const sGlowMat = new THREE.MeshBasicMaterial({ color: colorS, transparent:true, opacity:0.12, depthWrite:false });
+                const sGlow = new THREE.Mesh(sGlowGeom, sGlowMat);
+                sGlow.renderOrder = 1;
+                group.add(sGlow);
+            }
+            const arrowPos = end.clone().add(k.clone().multiplyScalar(-0.4));
+            const arrowGeom = new THREE.ConeGeometry(0.1, 0.25, 8);
+            const arrowMat = new THREE.MeshBasicMaterial({ color:0xffffff, depthWrite:false });
+            const arrow = new THREE.Mesh(arrowGeom, arrowMat);
+            arrow.position.copy(arrowPos);
+            arrow.renderOrder = 1;
+            const up = new THREE.Vector3(0,1,0);
+            arrow.quaternion.setFromUnitVectors(up, k);
+            group.add(arrow);
+            return group;
+        }
+        
+        // ============ 入射面高亮 ============
+        function createIncidencePlaneHighlight() {
+            const group = new THREE.Group();
+            const planeGeom = new THREE.PlaneGeometry(16, 12);
+            const planeMat = new THREE.MeshBasicMaterial({ color:0x4fc3f7, transparent:true, opacity:0.06, side:THREE.DoubleSide, depthWrite:false });
+            const plane = new THREE.Mesh(planeGeom, planeMat);
+            plane.renderOrder = 0;
+            plane.position.set(0, 1, 0);
+            group.add(plane);
+            const borderPoints = [
+                new THREE.Vector3(-8,-3,0),new THREE.Vector3(-8,7,0),new THREE.Vector3(8,7,0),new THREE.Vector3(8,-3,0),new THREE.Vector3(-8,-3,0)
+            ];
+            const borderGeom = new THREE.BufferGeometry().setFromPoints(borderPoints);
+            const borderMat = new THREE.LineBasicMaterial({ color:0x4fc3f7, transparent:true, opacity:0.4 });
+            const borderLine = new THREE.Line(borderGeom, borderMat);
+            borderLine.renderOrder = 0;
+            group.add(borderLine);
+            const label = createTextSprite("入射面 (x-y平面)", 0x4fc3f7, 0.4);
+            label.position.set(6,6,0.1);
+            group.add(label);
+            const perpLabel = createTextSprite("⊥ 入射面 (z方向)", 0xce93d8, 0.3);
+            perpLabel.position.set(0,6,1.5);
+            group.add(perpLabel);
+            return group;
+        }
+        
+        // ============ 角度弧线 ============
+        function createAngleArc(center, startAngle, endAngle, radius, color, label, isAbove) {
+            const group = new THREE.Group();
+            const points = [];
+            const segments = 40;
+            const zOffset = isAbove ? 0.05 : -0.05;
+            for (let i=0; i<=segments; i++) {
+                const t = i / segments;
+                const ang = startAngle + (endAngle - startAngle) * t;
+                points.push(new THREE.Vector3(
+                    center.x + radius * Math.sin(ang),
+                    center.y + radius * Math.cos(ang),
+                    center.z + zOffset
+                ));
+            }
+            const geom = new THREE.BufferGeometry().setFromPoints(points);
+            const mat = new THREE.LineBasicMaterial({ color: color });
+            const arcLine = new THREE.Line(geom, mat);
+            arcLine.renderOrder = 1;
+            group.add(arcLine);
+            if(label) {
+                const midAng = (startAngle + endAngle) / 2;
+                const pos = new THREE.Vector3(
+                    center.x + (radius+0.5)*Math.sin(midAng),
+                    center.y + (radius+0.5)*Math.cos(midAng),
+                    center.z + 0.1
+                );
+                const sp = createTextSprite(label, color, 0.3);
+                sp.position.copy(pos);
+                group.add(sp);
+            }
+            return group;
+        }
+        
+        // ============ 菲涅尔与全反射判断 ============
+        function calcOptics(ti, n1, n2) {
+            const s_i = Math.sin(ti);
+            const c_i = Math.cos(ti);
+            let tc = null;
+            let totalReflect = false;
+            let st = 0;
+            let tt = 0;
+            let Rp=1, Rs=1;
+            // 仅n1>n2存在临界角
+            if(n1 > n2) {
+                const sinC = n2 / n1;
+                tc = Math.asin(sinC);
+                if(ti >= tc) {
+                    totalReflect = true;
+                    return {Rp,Rs,tt,totalReflect,theta_c:tc};
+                }
+            }
+            // 正常折射
+            st = (n1 / n2) * s_i;
+            tt = Math.asin(st);
+            const ct = Math.cos(tt);
+            const rp = (n2*c_i - n1*ct) / (n2*c_i + n1*ct);
+            const rs = (n1*c_i - n2*ct) / (n1*c_i + n2*ct);
+            Rp = rp*rp;
+            Rs = rs*rs;
+            return {Rp,Rs,theta_t:tt,totalReflect,theta_c:tc};
+        }
+        
+        function clearSceneObjects() {
+            for(let i=0; i<sceneObjects.length; i++) scene.remove(sceneObjects[i]);
+            sceneObjects = [];
+        }
+        function addToScene(obj) {
+            scene.add(obj);
+            sceneObjects.push(obj);
+        }
+        
+        // ============ 重建场景 ============
+        function buildScene() {
+            clearSceneObjects();
+            theta_B = Math.atan(n2 / n1);
+            const ti = currentTheta_i;
+            const opt = calcOptics(ti, n1, n2);
+            const Rp = opt.Rp;
+            const Rs = opt.Rs;
+            const tt = opt.theta_t;
+            const totalReflect = opt.totalReflect;
+            theta_c = opt.theta_c;
+            const k_i = new THREE.Vector3(-Math.sin(ti), -Math.cos(ti), 0).normalize();
+            const k_r = new THREE.Vector3(Math.sin(ti), Math.cos(ti), 0).normalize();
+            const k_r2 = new THREE.Vector3(-Math.sin(ti), Math.cos(ti), 0).normalize();
+            const k_t = new THREE.Vector3(Math.sin(tt), -Math.cos(tt), 0).normalize();
+            const k_t2 = new THREE.Vector3(-Math.sin(tt), -Math.cos(tt), 0).normalize();
+            const origin = new THREE.Vector3(0,0,0);
+            const rayLen = 6;
+            const incidentStart = origin.clone().add(k_i.clone().multiplyScalar(-rayLen));
+            const showP = currentMode === 'p' || currentMode === 'both';
+            const showS = currentMode === 's' || currentMode === 'both';
+            addToScene(createIncidencePlaneHighlight());
+            // 入射光
+            const incRay = createWaveRay(incidentStart, k_i, rayLen, 0xff5252,0x448aff, showP?1:0, showS?1:0,10);
+            addToScene(incRay);
+            const incLabel = createTextSprite("入射光",0xffffff,0.35);
+            incLabel.position.copy(incidentStart).add(new THREE.Vector3(-0.8,0.5,0));
+            addToScene(incLabel);
+            // 反射光
+            const refP = showP ? Math.sqrt(Rp) : 0;
+            const refS = showS ? Math.sqrt(Rs) : 0;
+            if(refP>0.005 || refS>0.005) {
+                const refRay = createWaveRay(origin, k_r2, rayLen*0.8, 0xff5252,0x448aff, refP, refS,8);
+                addToScene(refRay);
+                const refLabel = createTextSprite("反射光",0xffab40,0.35);
+                refLabel.position.copy(origin.clone().add(k_r2.clone().multiplyScalar(rayLen*0.5))).add(new THREE.Vector3(0.3,0.5,0));
+                addToScene(refLabel);
+            }
+            // 折射光：全反射时不绘制
+            if(!totalReflect) {
+                const trP = showP ? Math.sqrt(1-Rp) : 0;
+                const trS = showS ? Math.sqrt(1-Rs) : 0;
+                const refrRay = createWaveRay(origin, k_t2, rayLen, 0xff5252,0x448aff, trP, trS,8);
+                addToScene(refrRay);
+                const refrLabel = createTextSprite("折射光",0x69f0ae,0.35);
+                refrLabel.position.copy(origin.clone().add(k_t2.clone().multiplyScalar(rayLen*0.6))).add(new THREE.Vector3(0.3,-0.5,0));
+                addToScene(refrLabel);
+            }
+            // 基础角度弧：入射角、反射角、折射角
+            addToScene(createAngleArc(origin, 0, -ti, 1.2, 0xffab40, "θᵣ", true));
+            if(!totalReflect) addToScene(createAngleArc(origin, Math.PI, Math.PI+tt, 0.9,0x81c784,"θₜ",false));
+            addToScene(createAngleArc(origin, 0, ti, 1.0,0x448aff,"θᵢ",true));
+            // ========== 布儒斯特角 θ_B 紫色弧线标记（移除全反射判断，始终显示） ==========
+            addToScene(createAngleArc(origin, 0, theta_B, 1.6, 0xce93d8, "θ_B", true));
+            // 绘制临界角弧线（存在临界角时）
+            if(theta_c !== null) {
+                addToScene(createAngleArc(origin, 0, -theta_c, 1.4, 0xffcc80, "θ_c", true));
+            }
+            // 90°直角标记（仅无全反射时才显示，因为全反射无折射光）
+            if(Math.abs(ti + tt - Math.PI/2) < 0.05 && !totalReflect) {
+                const raPos = origin.clone().add(k_r2.clone().multiplyScalar(0.6)).add(k_t.clone().multiplyScalar(0.4));
+                const raPoints = [
+                    raPos.clone().add(new THREE.Vector3(0.2,0,0)), raPos, raPos.clone().add(new THREE.Vector3(0,0.2,0))
+                ];
+                const raGeom = new THREE.BufferGeometry().setFromPoints(raPoints);
+                const raMat = new THREE.LineBasicMaterial({color:0xffab40, depthWrite:false});
+                const raLine = new THREE.Line(raGeom, raMat);
+                raLine.renderOrder = 1;
+                addToScene(raLine);
+                const raLabel = createTextSprite("90°",0xffab40,0.25);
+                raLabel.position.copy(raPos).add(new THREE.Vector3(-0.3,0.2,0));
+                addToScene(raLabel);
+            }
+            // 场景文字提示
+            if(totalReflect) {
+                const trLabel = createTextSprite("⚠️ 全反射，无折射光", 0xffcc80, 0.4);
+                trLabel.position.set(-3, 3, 2);
+                addToScene(trLabel);
+            } else if(Math.abs(ti-theta_B) < 0.02 && showP) {
+                const bLabel = createTextSprite("完全线偏振光",0xff5252,0.4);
+                bLabel.position.set(-3,3,2);
+                addToScene(bLabel);
+            }
+            // 反射率文字
+            const RpPct = (Rp*100).toFixed(1);
+            const RsPct = (Rs*100).toFixed(1);
+            const infoLabel = createTextSprite(`Rp = ${RpPct}%    Rs = ${RsPct}%`, 0xb0b8c8,0.3);
+            infoLabel.position.set(0,2,0);
+            addToScene(infoLabel);
+            updateUI(ti, tt, Rp, Rs, totalReflect);
+        }
+        
+        // ============ 更新UI（新增全反射、临界角显示） ============
+        function updateUI(ti, tt, Rp, Rs, totalReflect) {
+            const deg_i = (ti * 180 / Math.PI).toFixed(1);
+            const deg_t = totalReflect ? "无" : (tt * 180 / Math.PI).toFixed(1);
+            const sum = totalReflect ? "无" : ((ti + tt) * 180 / Math.PI).toFixed(1);
+            const deg_B = (theta_B * 180 / Math.PI).toFixed(1);
+            const deg_C = theta_c === null ? "无" : (theta_c * 180 / Math.PI).toFixed(1);
+            document.getElementById('angle-val').textContent = deg_i + "°";
+            document.getElementById('sum-angle').textContent = sum;
+            document.getElementById('brewster-val').textContent = deg_B + "°";
+            document.getElementById('critical-val').textContent = deg_C;
+            document.getElementById('n1-val').textContent = n1.toFixed(2);
+            document.getElementById('n2-val').textContent = n2.toFixed(2);
+            const statusEl = document.getElementById('brewster-status');
+            const isBrewster = !totalReflect && Math.abs(ti-theta_B) < 0.02;
+            if(totalReflect) {
+                statusEl.className = "brewster-indicator total-reflection";
+                statusEl.innerHTML = "⚠️ 全反射，无折射光<br><span style='font-size:11px;font-weight:normal;'>Rp=100% Rs=100%</span>";
+            } else if(isBrewster) {
+                statusEl.className = "brewster-indicator is-brewster";
+                statusEl.innerHTML = "✅ 布儒斯特角！反射光为完全线偏振光<br><span style='font-size:11px;font-weight:normal;'>Rp≈0% Rs≈"+(Rs*100).toFixed(1)+"%</span>";
+            } else {
+                statusEl.className = "brewster-indicator not-brewster";
+                statusEl.innerHTML = "❌ 非布儒斯特角<br><span style='font-size:11px;font-weight:normal;'>Rp="+(Rp*100).toFixed(1)+"% Rs="+(Rs*100).toFixed(1)+"%</span>";
+            }
+        }
+        
+        // ============ 控制事件 ============
+        function setMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.btn').forEach(b=>{if(b.id!=='btn-anim')b.classList.remove('active');});
+            document.getElementById('btn-'+mode).classList.add('active');
+            buildScene();
+        }
+        function toggleAnimation() {
+            isAnimating = !isAnimating;
+            document.getElementById('btn-anim').textContent = isAnimating ? "⏸ 停止演示" : "▶ 自动演示";
+        }
+        document.getElementById('angle-slider').addEventListener('input',e=>{
+            currentTheta_i = parseFloat(e.target.value) * Math.PI / 180;
+            buildScene();
+        });
+        document.getElementById('n1-slider').addEventListener('input',e=>{
+            n1 = parseFloat(e.target.value);
+            buildScene();
+        });
+        document.getElementById('n2-slider').addEventListener('input',e=>{
+            n2 = parseFloat(e.target.value);
+            buildScene();
+        });
+        
+        // ============ 渲染循环 ============
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.01;
+            if(isAnimating) {
+                const minA = 5 * Math.PI / 180;
+                const maxA = 85 * Math.PI / 180;
+                currentTheta_i += 0.005 * animDirection;
+                if(currentTheta_i > maxA) {currentTheta_i = maxA; animDirection=-1;}
+                if(currentTheta_i < minA) {currentTheta_i = minA; animDirection=1;}
+                document.getElementById('angle-slider').value = (currentTheta_i * 180 / Math.PI).toFixed(1);
+                buildScene();
+            }
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        buildScene();
+        animate();
+        window.addEventListener('resize',()=>{
+            const w = container.clientWidth;
+            const h = container.clientHeight;
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+            renderer.setSize(w, h);
+        });
+    </script>
+</body>
+</html>

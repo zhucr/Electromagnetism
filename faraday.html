@@ -134,6 +134,7 @@
             border: 1px solid rgba(255,255,255,0.06);
             box-shadow: 0 6px 20px rgba(0,0,0,0.5);
             max-width: 380px;
+            transition: opacity 0.25s, transform 0.25s;
         }
         #info h1 {
             margin: 0 0 6px;
@@ -154,6 +155,11 @@
         #info .pos      { color: #88ff88; font-weight: 600; font-variant-numeric: tabular-nums; }
         #info .efield   { color: #ffaa66; font-weight: 600; }
         #info .paused   { color: #ff8844; font-weight: 700; }
+        #info.collapsed {
+            opacity: 0;
+            transform: translateX(-8px);
+            pointer-events: none;
+        }
 
         #emf-meter {
             position: absolute;
@@ -165,6 +171,7 @@
             z-index: 50;
             pointer-events: none;
             filter: drop-shadow(0 4px 16px rgba(0,0,0,0.6));
+            transition: bottom 0.3s;
         }
         #emf-meter svg {
             width: 100%;
@@ -479,8 +486,12 @@
             background: #fff;
         }
 
-        /* 移动端折叠面板按钮 */
+        /* 移动端折叠按钮 —— 默认隐藏 */
         #panel-toggle {
+            display: none;
+        }
+        /* 移动端信息面板折叠按钮 —— 默认隐藏 */
+        #info-toggle {
             display: none;
         }
 
@@ -489,16 +500,16 @@
            ============================================================ */
         @media (max-width: 900px) {
             .header {
-                height: 48px;
+                height: 44px;
                 padding: 0 12px;
             }
             .header h1 {
-                font-size: 13px;
-                letter-spacing: 1px;
+                font-size: 12px;
+                letter-spacing: 0.5px;
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
-                max-width: 65vw;
+                max-width: 62vw;
             }
             .header .back {
                 font-size: 11px;
@@ -517,35 +528,76 @@
                 flex: 1;
             }
 
-            /* 信息面板缩小 */
+            /* -------- 信息面板：默认折叠为小图标，可点击展开 -------- */
             #info {
                 top: 8px;
                 left: 8px;
-                padding: 8px 12px;
-                max-width: 55vw;
+                padding: 8px 12px 10px;
+                max-width: 68vw;
                 border-radius: 10px;
+                transition: transform 0.25s, opacity 0.25s;
             }
             #info h1 {
-                font-size: 0.82rem;
-                margin-bottom: 4px;
+                font-size: 0.8rem;
+                margin-bottom: 2px;
             }
             #info p {
-                font-size: 0.7rem;
+                font-size: 0.68rem;
                 margin: 2px 0;
                 line-height: 1.35;
             }
             #info p:last-child {
-                display: none; /* 隐藏提示语 */
+                display: none;
+            }
+            /* 折叠态：只显示标题第一行 */
+            #info.collapsed {
+                padding: 6px 10px;
+                max-width: unset;
+            }
+            #info.collapsed h1 {
+                margin-bottom: 0;
+                font-size: 0.75rem;
+            }
+            #info.collapsed p {
+                display: none;
             }
 
-            /* 表盘缩小 */
+            #info-toggle {
+                display: block;
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                width: 30px;
+                height: 30px;
+                border-radius: 8px;
+                background: rgba(10, 18, 28, 0.85);
+                border: 1px solid rgba(255,255,255,0.1);
+                color: #b0d0ff;
+                font-size: 14px;
+                line-height: 1;
+                cursor: pointer;
+                z-index: 60;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0;
+            }
+            #info-toggle:active {
+                transform: scale(0.95);
+            }
+
+            /* -------- 电压表盘：移到右上角，避免被底部面板遮挡 -------- */
             #emf-meter {
-                width: 200px;
-                height: 94px;
-                bottom: 10px;
+                width: 170px;
+                height: 82px;
+                top: 46px;
+                right: 8px;
+                left: auto;
+                bottom: auto;
+                transform: none;
             }
 
-            /* 面板变为从底部弹出的抽屉 */
+            /* -------- 控制面板：底部抽屉，默认只露出小按钮 -------- */
             #panel {
                 position: fixed;
                 left: 0;
@@ -553,16 +605,16 @@
                 bottom: 0;
                 width: 100%;
                 min-width: unset;
-                max-height: 60vh;
+                max-height: 62vh;
                 border-left: none;
                 border-top: 1px solid rgba(255, 255, 255, 0.08);
                 border-radius: 16px 16px 0 0;
-                padding: 18px 16px 24px;
-                background: rgba(10, 18, 28, 0.95);
-                transform: translateY(calc(100% - 48px));
+                padding: 44px 14px 20px;
+                background: rgba(10, 18, 28, 0.96);
+                transform: translateY(calc(100% - 40px));
                 transition: transform 0.3s ease;
                 z-index: 200;
-                gap: 12px;
+                gap: 10px;
             }
             #panel.expanded {
                 transform: translateY(0);
@@ -573,7 +625,7 @@
                 top: 8px;
                 left: 50%;
                 transform: translateX(-50%);
-                width: 40px;
+                width: 36px;
                 height: 4px;
                 border-radius: 2px;
                 background: rgba(255,255,255,0.2);
@@ -584,33 +636,37 @@
                 top: 0;
                 left: 0;
                 right: 0;
-                height: 48px;
+                height: 40px;
                 background: transparent;
                 border: none;
                 color: #b0d0ff;
-                font-size: 13px;
+                font-size: 12.5px;
                 font-weight: 600;
                 letter-spacing: 1px;
                 cursor: pointer;
                 z-index: 10;
                 font-family: inherit;
             }
+            #panel-toggle:active {
+                background: rgba(255,255,255,0.03);
+            }
             .panel-title {
-                margin-top: 6px;
-                font-size: 15px;
+                margin-top: 4px;
+                font-size: 14px;
+                padding-bottom: 4px;
             }
             .section {
                 padding: 10px 12px;
                 border-radius: 10px;
             }
             .section-label {
-                font-size: 12px;
+                font-size: 11.5px;
                 margin-bottom: 8px;
             }
             .btn {
-                font-size: 11.5px;
+                font-size: 11px;
                 padding: 8px 8px;
-                min-width: 44px;
+                min-width: 42px;
                 border-radius: 8px;
             }
             .btn-pause {
@@ -634,19 +690,20 @@
         /* 超小屏 */
         @media (max-width: 500px) {
             #info {
-                max-width: 60vw;
+                max-width: 58vw;
                 padding: 6px 10px;
             }
             #info h1 {
-                font-size: 0.75rem;
+                font-size: 0.72rem;
             }
             #info p {
-                font-size: 0.65rem;
+                font-size: 0.62rem;
             }
             #emf-meter {
-                width: 170px;
-                height: 80px;
-                bottom: 8px;
+                width: 145px;
+                height: 70px;
+                top: 42px;
+                right: 6px;
             }
         }
     </style>
@@ -667,6 +724,8 @@
                 <div class="err" id="loading-err"></div>
             </div>
 
+            <!-- 信息面板 + 折叠按钮 -->
+            <button id="info-toggle" title="展开/折叠信息">i</button>
             <div id="info">
                 <h1>⚡ 法拉第电磁感应定律</h1>
                 <p>电动势 <span class="e-color">E = - dΦ / dt</span></p>
@@ -679,6 +738,7 @@
                 </p>
             </div>
 
+            <!-- 电压表盘 -->
             <div id="emf-meter">
                 <svg viewBox="0 0 320 150" preserveAspectRatio="xMidYMid meet">
                     <rect class="meter-bg" x="10" y="10" width="300" height="130" rx="16"/>
@@ -696,6 +756,7 @@
             </div>
         </div>
 
+        <!-- 控制面板（移动端为底部抽屉） -->
         <div id="panel">
             <button id="panel-toggle">▲ 控制面板</button>
             <div class="panel-title">
@@ -836,7 +897,6 @@
         }
     });
 
-    // 检测是否为移动端/触摸设备
     const isTouchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
     const isMobile = window.matchMedia('(max-width: 900px)').matches;
 
@@ -850,11 +910,9 @@
             const controlsModule = await import('three/addons/controls/OrbitControls.js');
             return { THREE: threeModule, OrbitControls: controlsModule.OrbitControls };
         })();
-
         const timeoutPromise = new Promise((_, reject) => {
             setTimeout(() => reject(new Error('加载超时，请检查网络连接')), 15000);
         });
-
         return Promise.race([loadPromise, timeoutPromise]);
     }
 
@@ -880,12 +938,12 @@
         camera.lookAt(0, 0, 0);
 
         const renderer = new THREE.WebGLRenderer({
-            antialias: !isMobile, // 移动端关闭抗锯齿提升性能
+            antialias: !isMobile,
             powerPreference: 'high-performance'
         });
         renderer.setSize(w0, h0);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
-        renderer.shadowMap.enabled = !isMobile; // 移动端关闭阴影
+        renderer.shadowMap.enabled = !isMobile;
         if (renderer.shadowMap.enabled) {
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         }
@@ -896,8 +954,8 @@
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.08;
-        controls.enableZoom = true;          // 启用双指缩放/滚轮缩放
-        controls.enableRotate = true;        // 启用旋转（触摸单指旋转）
+        controls.enableZoom = true;
+        controls.enableRotate = true;
         controls.enablePan = false;
         controls.rotateSpeed = isMobile ? 0.7 : 1.0;
         controls.zoomSpeed = isMobile ? 0.8 : 1.0;
@@ -906,8 +964,6 @@
         controls.minDistance = 5;
         controls.maxDistance = 25;
 
-        // 桌面端：左键禁用旋转（用于拖动磁铁），右键旋转
-        // 移动端：单指旋转，双指缩放，长按磁铁拖动
         if (!isTouchDevice) {
             controls.mouseButtons = {
                 LEFT: null,
@@ -915,7 +971,6 @@
                 RIGHT: THREE.MOUSE.ROTATE
             };
         } else {
-            // 触摸设备：单指旋转、双指缩放
             controls.touches = {
                 ONE: THREE.TOUCH.ROTATE,
                 TWO: THREE.TOUCH.DOLLY_ROTATE
@@ -1682,7 +1737,7 @@
         });
 
         // ============================================================
-        //  13. 交互逻辑（桌面 + 移动端分离）
+        //  13. 交互逻辑
         // ============================================================
         let isDraggingMagnet = false;
         let lastX = 0;
@@ -1694,7 +1749,6 @@
         const camForward = new THREE.Vector3();
         const camUp = new THREE.Vector3();
 
-        // ---- 桌面端：左键拖动磁铁，右键旋转 ----
         function onPointerDownDesktop(e) {
             if (e.button === 0) {
                 isDraggingMagnet = true;
@@ -1732,7 +1786,7 @@
             }
         }
 
-        // ---- 移动端：长按磁铁拖动，其余交给 OrbitControls ----
+        // 移动端长按拖动
         let touchDragTimer = null;
         let touchDragActive = false;
         let touchStartX = 0;
@@ -1741,7 +1795,6 @@
 
         function onTouchStart(e) {
             if (e.touches.length !== 1) {
-                // 双指触摸：取消长按等待
                 if (touchDragTimer) {
                     clearTimeout(touchDragTimer);
                     touchDragTimer = null;
@@ -1753,22 +1806,17 @@
             touchStartX = t.clientX;
             touchStartY = t.clientY;
             touchCurrentX = t.clientX;
-
-            // 记录当前磁铁位置
             targetMagnetZ = magnetGroup.position.z;
 
-            // 启动长按计时器：300ms 后进入磁铁拖动模式
             if (touchDragTimer) clearTimeout(touchDragTimer);
             touchDragTimer = setTimeout(() => {
                 touchDragActive = true;
-                // 进入拖动模式：临时禁用 OrbitControls
                 controls.enabled = false;
             }, 300);
         }
 
         function onTouchMove(e) {
             if (e.touches.length !== 1) {
-                // 双指：取消拖动模式
                 if (touchDragTimer) {
                     clearTimeout(touchDragTimer);
                     touchDragTimer = null;
@@ -1782,7 +1830,6 @@
 
             const t = e.touches[0];
 
-            // 如果还没进入拖动模式，检查移动距离是否超过阈值（超过则取消长按）
             if (!touchDragActive && touchDragTimer) {
                 const dx = Math.abs(t.clientX - touchStartX);
                 const dy = Math.abs(t.clientY - touchStartY);
@@ -1793,7 +1840,6 @@
                 return;
             }
 
-            // 进入拖动模式后，处理磁铁移动
             if (touchDragActive) {
                 e.preventDefault();
                 const dx = t.clientX - touchCurrentX;
@@ -1823,7 +1869,6 @@
             }
         }
 
-        // ---- 绑定事件（区分设备） ----
         if (isTouchDevice) {
             canvas.addEventListener('touchstart', onTouchStart, { passive: false });
             canvas.addEventListener('touchmove', onTouchMove, { passive: false });
@@ -1836,7 +1881,6 @@
             window.addEventListener('pointercancel', onPointerUpDesktop);
         }
 
-        // 键盘控制（桌面）
         function onKeyDown(e) {
             if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
                 const dir = e.key === 'ArrowRight' ? 1 : -1;
@@ -1855,7 +1899,7 @@
         }
         window.addEventListener('keydown', onKeyDown);
 
-        // ---- 移动端面板抽屉交互 ----
+        // ---- 控制面板抽屉交互 ----
         const panelEl = document.getElementById('panel');
         const panelToggle = document.getElementById('panel-toggle');
 
@@ -1875,6 +1919,17 @@
             }
         }, { passive: true });
 
+        // ---- 信息面板折叠交互 ----
+        const infoEl = document.getElementById('info');
+        const infoToggle = document.getElementById('info-toggle');
+
+        infoToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            infoEl.classList.toggle('collapsed');
+            infoToggle.textContent = infoEl.classList.contains('collapsed') ? 'i' : '✕';
+            infoToggle.title = infoEl.classList.contains('collapsed') ? '展开信息' : '折叠信息';
+        });
+
         // ============================================================
         //  14. 初始化
         // ============================================================
@@ -1883,6 +1938,12 @@
         buildFieldLines(currentDensity);
         updateEFieldDensityButtons();
         updatePauseUI();
+
+        // 移动端：默认折叠信息面板（只显示标题行）
+        if (isMobile) {
+            infoEl.classList.add('collapsed');
+            infoToggle.textContent = 'i';
+        }
 
         if (loadingEl) loadingEl.remove();
 
@@ -1899,7 +1960,6 @@
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
         }
         window.addEventListener('resize', onResize);
-        // 移动端旋转屏幕时也要更新
         window.addEventListener('orientationchange', () => {
             setTimeout(onResize, 200);
         });
@@ -2076,7 +2136,7 @@
 
         animate();
 
-        console.log('%c⚡ 法拉第电磁感应 · 移动端已优化',
+        console.log('%c⚡ 法拉第电磁感应 · 移动端布局已优化',
             'color:#ffaa00; font-weight:bold; font-size:14px;');
 
     } catch (err) {

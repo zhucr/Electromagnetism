@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>法拉第电磁感应定律 </title>
+    <title>法拉第电磁感应定律 · 电场可视化</title>
     <style>
         :root {
             --ahnu-blue: #003d7a;
@@ -125,8 +125,9 @@
         #info .b-color  { color: #5fb8ff; font-weight: 600; }
         #info .hl       { color: #f0c060; font-weight: 600; }
         #info .pos      { color: #88ff88; font-weight: 600; font-variant-numeric: tabular-nums; }
+        #info .efield   { color: #ffaa66; font-weight: 600; }
+        #info .paused   { color: #ff8844; font-weight: 700; }
 
-        /* ===== 指针式电动势表盘 ===== */
         #emf-meter {
             position: absolute;
             bottom: 20px;
@@ -269,16 +270,16 @@
         }
         .btn-group {
             display: flex;
-            gap: 8px;
+            gap: 6px;
             flex-wrap: wrap;
         }
         .btn {
             flex: 1;
-            min-width: 60px;
-            padding: 8px 12px;
+            min-width: 50px;
+            padding: 7px 10px;
             border: none;
-            border-radius: 10px;
-            font-size: 13px;
+            border-radius: 9px;
+            font-size: 12.5px;
             font-weight: 500;
             color: #e8edf3;
             background: rgba(255, 255, 255, 0.06);
@@ -297,23 +298,46 @@
         .btn:active {
             transform: scale(0.97);
         }
-        .btn-primary {
-            background: linear-gradient(135deg, #2a4a7a, #1a3560);
-            border-color: rgba(255, 255, 255, 0.08);
-        }
-        .btn-primary:hover {
-            background: linear-gradient(135deg, #3a5a8a, #2a4570);
-        }
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.04);
-        }
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.10);
-        }
         .btn-active {
             background: linear-gradient(135deg, #3a7aaa, #2a5a8a);
             border-color: rgba(100, 180, 255, 0.3);
             box-shadow: 0 0 16px rgba(60, 140, 255, 0.15);
+            color: #fff;
+        }
+        .btn-pause {
+            width: 100%;
+            padding: 10px 14px;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            background: linear-gradient(135deg, #8a3a2a, #6a2a1a);
+            border: 1px solid rgba(255, 120, 80, 0.3);
+            color: #fff;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            user-select: none;
+        }
+        .btn-pause:hover {
+            background: linear-gradient(135deg, #aa4a3a, #8a3a2a);
+            box-shadow: 0 4px 16px rgba(255, 100, 60, 0.25);
+            transform: translateY(-1px);
+        }
+        .btn-pause:active {
+            transform: scale(0.98);
+        }
+        .btn-pause.btn-paused {
+            background: linear-gradient(135deg, #2a7a4a, #1a6030);
+            border-color: rgba(80, 255, 150, 0.35);
+            box-shadow: 0 0 18px rgba(60, 255, 130, 0.2);
+        }
+        .btn-pause.btn-paused:hover {
+            background: linear-gradient(135deg, #3a9a5a, #2a7040);
+            box-shadow: 0 4px 16px rgba(60, 255, 130, 0.3);
         }
         .slider-group {
             margin-top: 6px;
@@ -373,15 +397,6 @@
             gap: 6px;
             font-size: 12px;
             color: #9ab0cc;
-        }
-        .legend-gradient {
-            width: 80px;
-            height: 10px;
-            border-radius: 5px;
-            flex-shrink: 0;
-            background: linear-gradient(to right,
-                #0000ff 0%, #00aaff 25%, #00ffcc 45%,
-                #ffff00 65%, #ff8800 85%, #ff0000 100%);
         }
         .legend-dot {
             width: 14px;
@@ -483,9 +498,9 @@
                 padding: 10px 12px;
             }
             .btn {
-                font-size: 12px;
-                padding: 6px 10px;
-                min-width: 50px;
+                font-size: 11.5px;
+                padding: 6px 8px;
+                min-width: 44px;
             }
             #info {
                 max-width: 200px;
@@ -497,7 +512,7 @@
 <body>
 
     <header class="header">
-        <h1>⚡ 法拉第电磁感应定律 </h1>
+        <h1>⚡ 法拉第电磁感应定律 · 电场可视化</h1>
         <a class="back" href="index.html">← 返回实验大厅</a>
     </header>
 
@@ -508,7 +523,6 @@
                 <div class="err" id="loading-err"></div>
             </div>
 
-            <!-- 左上角信息 -->
             <div id="info">
                 <h1>⚡ 法拉第电磁感应定律</h1>
                 <p>
@@ -520,51 +534,72 @@
                 <p>
                     移动速度：<span class="hl" id="info-speed">1.0x</span>
                 </p>
+                <p>
+                    感应电场 <span class="efield">(静止时为零)</span>
+                </p>
+                <p>
+                    运动状态：<span class="paused" id="info-pause-state">▶ 运行中</span>
+                </p>
                 <p style="font-size:0.75rem; opacity:0.65;">
-                    ※ 磁场模型：N极(红) → S极(蓝)
+                    ※ 箭头方向表示电场方向，颜色表示场强大小
                 </p>
             </div>
 
-            <!-- 指针式电动势表盘 -->
             <div id="emf-meter">
                 <svg viewBox="0 0 320 150" preserveAspectRatio="xMidYMid meet">
-                    <!-- 背景 -->
                     <rect class="meter-bg" x="10" y="10" width="300" height="130" rx="16"/>
-
-                    <!-- 圆弧背景 -->
                     <path class="meter-arc-bg" d="M 55 118 A 105 105 0 0 1 265 118" />
-
-                    <!-- 刻度线和标签：从 -135° 到 +135° 共 7 个主刻度 -->
-                    <g id="meter-ticks">
-                        <!-- 由 JS 动态生成 -->
-                    </g>
-
-                    <!-- 指针 -->
+                    <g id="meter-ticks"></g>
                     <g class="meter-needle" id="meter-needle">
                         <line class="meter-needle-line" x1="160" y1="130" x2="160" y2="35" />
                         <circle class="meter-needle-hub" cx="160" cy="130" r="7" />
                     </g>
-
-                    <!-- 数字显示 -->
                     <text class="meter-value" id="meter-value" x="160" y="90">0.00</text>
                     <text class="meter-unit" x="160" y="106">V</text>
-
-                    <!-- 零线 -->
                     <line class="meter-zero" x1="160" y1="118" x2="160" y2="122" />
-
-                    <!-- 标签 -->
                     <text class="meter-label" x="160" y="30">感应电动势</text>
                 </svg>
             </div>
         </div>
 
-        <!-- 右侧控制面板 -->
         <div id="panel">
             <div class="panel-title">
-                ⚡ 法拉第电磁感应
+                ⚡ 电场 & 电磁感应
             </div>
 
-            <!-- 自动移动控制 -->
+            <!-- 暂停/继续 按钮 -->
+            <div class="section" style="padding:12px 14px;">
+                <button id="pauseBtn" class="btn-pause">
+                    <span id="pauseIcon">⏸</span>
+                    <span id="pauseText">暂停运动</span>
+                </button>
+                <p style="font-size:11px; color:#7a90aa; text-align:center; margin-top:8px; line-height:1.5;">
+                    暂停后冻结所有场，方便观察
+                </p>
+            </div>
+
+            <div class="section">
+                <div class="section-label">⚡ 感应电场矢量</div>
+                <div class="switch-row" style="margin-bottom:8px;">
+                    <span class="switch-label">
+                        ➡️ 显示电场矢量
+                        <span class="hint">静止时消失</span>
+                    </span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="showEField" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="section-label" style="margin-bottom:6px;">📊 电场矢量密度</div>
+                <div class="btn-group" id="efieldDensityGroup">
+                    <button class="btn" data-density="0">关闭</button>
+                    <button class="btn" data-density="1">低</button>
+                    <button class="btn btn-active" data-density="2">中</button>
+                    <button class="btn" data-density="3">高</button>
+                    <button class="btn" data-density="4">超高</button>
+                </div>
+            </div>
+
             <div class="section">
                 <div class="section-label">🔄 自动移动</div>
                 <div class="switch-row">
@@ -579,7 +614,6 @@
                 </div>
             </div>
 
-            <!-- 速度 -->
             <div class="section">
                 <div class="section-label">🚀 移动速度</div>
                 <div class="slider-group">
@@ -588,7 +622,6 @@
                 </div>
             </div>
 
-            <!-- 显示控制 -->
             <div class="section">
                 <div class="section-label">👁️ 显示控制</div>
                 <div class="switch-row" style="margin-bottom:6px;">
@@ -607,7 +640,6 @@
                 </div>
             </div>
 
-            <!-- 磁场线密度 -->
             <div class="section">
                 <div class="section-label">📊 磁场线密度</div>
                 <div class="slider-group">
@@ -616,7 +648,6 @@
                 </div>
             </div>
 
-            <!-- 操作提示 -->
             <div class="section">
                 <div class="section-label">🖱️ 手动操作</div>
                 <p style="font-size:12px; color:#7a90aa; line-height:1.7; margin:2px 0;">
@@ -627,7 +658,6 @@
                 </p>
             </div>
 
-            <!-- 图例 -->
             <div class="section" style="border-color:rgba(255,255,255,0.03);">
                 <div class="section-label" style="margin-bottom:4px;">🎨 图例</div>
                 <div class="legend-grid">
@@ -636,14 +666,13 @@
                 </div>
                 <div class="legend-grid" style="margin-top:6px;">
                     <span class="legend-item" style="font-size:11px; color:#6a8aaa;">
-                        ➡️ 箭头方向：N极(红) → S极(蓝)
+                        ➡️ 电场矢量颜色：<span style="color:#00aaff;">弱</span> → <span style="color:#ffff00;">中</span> → <span style="color:#ff0000;">强</span>
                     </span>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 使用 jsDelivr CDN -->
     <script type="importmap">
     {
         "imports": {
@@ -675,14 +704,14 @@
         scene.background = new THREE.Color(0x0a0f16);
 
         const canvasWrap = document.getElementById('canvas-wrap');
-        const camera = new THREE.PerspectiveCamera(
-            45, canvasWrap.clientWidth / Math.max(canvasWrap.clientHeight, 1), 0.1, 1000
-        );
+        const w0 = canvasWrap.clientWidth || window.innerWidth;
+        const h0 = canvasWrap.clientHeight || window.innerHeight;
+        const camera = new THREE.PerspectiveCamera(45, w0 / Math.max(h0, 1), 0.1, 1000);
         camera.position.set(7, 5, 11);
         camera.lookAt(0, 0, 0);
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(canvasWrap.clientWidth, canvasWrap.clientHeight);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+        renderer.setSize(w0, h0);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -792,7 +821,7 @@
         }
         const spiralCurve = new THREE.CatmullRomCurve3(spiralPoints);
         const coilMesh = new THREE.Mesh(
-            new THREE.TubeGeometry(spiralCurve, 700, tubeR, 8, false),
+            new THREE.TubeGeometry(spiralCurve, 500, tubeR, 8, false),
             new THREE.MeshStandardMaterial({
                 color: 0xffaa33,
                 emissive: 0x442200,
@@ -827,7 +856,7 @@
         scene.add(coilGroup);
 
         // ============================================================
-        //  6. 磁铁（不透明，含内部磁单极子）
+        //  6. 磁铁
         // ============================================================
         const magnetGroup = new THREE.Group();
         const mLen = 2.0, mW = 0.8, mH = 0.8;
@@ -872,7 +901,7 @@
         scene.add(magnetGroup);
 
         // ============================================================
-        //  7. 磁单极子（内部）
+        //  7. 磁单极子
         // ============================================================
         const monopoleGroup = new THREE.Group();
         magnetGroup.add(monopoleGroup);
@@ -960,7 +989,7 @@
             let p = startPos.clone();
 
             const step = 0.09;
-            const maxSteps = 500;
+            const maxSteps = 400;
             const bound = 8.0;
 
             for (let i = 0; i < maxSteps; i++) {
@@ -1100,70 +1129,191 @@
         }
 
         // ============================================================
-        //  9. 电动势计算与指针表盘
+        //  9. 感应电场矢量系统（可调密度，暂停时保留）
+        // ============================================================
+        const eFieldGroup = new THREE.Group();
+        scene.add(eFieldGroup);
+
+        let prevMagnetZ = magnetGroup.position.z;
+        let currentMagnetVelocity = 0;
+
+        const eArrowShaftGeo = new THREE.CylinderGeometry(0.03, 0.03, 1, 5);
+        const eArrowHeadGeo = new THREE.ConeGeometry(0.09, 0.35, 6);
+
+        const eArrowPool = [];
+
+        function getPooledArrow() {
+            if (eArrowPool.length > 0) {
+                return eArrowPool.pop();
+            }
+            const group = new THREE.Group();
+
+            const shaftMat = new THREE.MeshStandardMaterial({
+                transparent: true, opacity: 0.85, roughness: 0.4,
+                emissiveIntensity: 0.5
+            });
+            const headMat = new THREE.MeshStandardMaterial({
+                transparent: true, opacity: 0.9, roughness: 0.4,
+                emissiveIntensity: 0.7
+            });
+
+            const shaft = new THREE.Mesh(eArrowShaftGeo, shaftMat);
+            const head = new THREE.Mesh(eArrowHeadGeo, headMat);
+
+            group.add(shaft);
+            group.add(head);
+            group.userData.shaft = shaft;
+            group.userData.head = head;
+
+            return group;
+        }
+
+        function releaseAllEArrows() {
+            while (eFieldGroup.children.length > 0) {
+                const child = eFieldGroup.children[0];
+                eFieldGroup.remove(child);
+                eArrowPool.push(child);
+            }
+        }
+
+        // density: 0=关闭, 1=低, 2=中, 3=高, 4=超高
+        function buildEFieldArrows(density, velocity) {
+            releaseAllEArrows();
+
+            if (density === 0) {
+                return;
+            }
+
+            const speedAbs = Math.abs(velocity);
+            if (speedAbs < 0.05) {
+                return;
+            }
+
+            const vFactor = Math.min(1.5, speedAbs * 0.5);
+
+            let gridSize, range;
+            if (density === 1) {
+                gridSize = 5; range = 3.0;
+            } else if (density === 2) {
+                gridSize = 7; range = 3.6;
+            } else if (density === 3) {
+                gridSize = 9; range = 4.0;
+            } else {
+                gridSize = 11; range = 4.4;
+            }
+            const spacing = range * 2 / (gridSize - 1);
+
+            const magnetZ = magnetGroup.position.z;
+            const velSign = Math.sign(velocity);
+
+            const tmpColor = new THREE.Color();
+            const dirVec = new THREE.Vector3();
+            const upVec = new THREE.Vector3(0, 1, 0);
+
+            for (let i = 0; i < gridSize; i++) {
+                for (let j = 0; j < gridSize; j++) {
+                    for (let k = 0; k < gridSize; k++) {
+                        const x = -range + i * spacing;
+                        const y = -range + j * spacing + 0.5;
+                        const z = -range + k * spacing;
+
+                        const distToMagnet = Math.abs(z - magnetZ);
+                        if (distToMagnet < 0.9 && Math.abs(x) < 0.8 && Math.abs(y - 0.5) < 0.8) continue;
+                        if (Math.abs(x) > 5 || Math.abs(y) > 5 || Math.abs(z) > 5) continue;
+
+                        const zDist = z - magnetZ;
+                        const rFromCoilAxis = Math.sqrt(x * x + y * y);
+
+                        const eMagBase = vFactor * 1.2 / (1 + rFromCoilAxis * 0.7) * (1 / (1 + Math.abs(zDist) * 0.6));
+
+                        const eFieldZ = velSign * eMagBase * 0.8;
+                        const eFieldX = -y * 0.35 * eMagBase;
+                        const eFieldY = x * 0.35 * eMagBase;
+
+                        const eMag = Math.sqrt(eFieldX * eFieldX + eFieldY * eFieldY + eFieldZ * eFieldZ);
+                        if (eMag < 0.04) continue;
+
+                        const arrowLen = Math.min(0.45, eMag * 0.9);
+                        const invMag = 1 / eMag;
+                        const dirX = eFieldX * invMag;
+                        const dirY = eFieldY * invMag;
+                        const dirZ = eFieldZ * invMag;
+
+                        if (eMag < 0.25) {
+                            const t = eMag / 0.25;
+                            tmpColor.setRGB(0, 0.6 + 0.4 * t, 1.0);
+                        } else if (eMag < 0.55) {
+                            const t = (eMag - 0.25) / 0.3;
+                            tmpColor.setRGB(0, 1.0, 1.0 - t);
+                        } else if (eMag < 0.8) {
+                            const t = (eMag - 0.55) / 0.25;
+                            tmpColor.setRGB(t, 1.0, 0);
+                        } else {
+                            const t = Math.min(1, (eMag - 0.8) / 0.4);
+                            tmpColor.setRGB(1.0, 1.0 - 0.6 * t, 0);
+                        }
+
+                        const arrowGroup = getPooledArrow();
+                        arrowGroup.position.set(x, y, z);
+
+                        dirVec.set(dirX, dirY, dirZ);
+                        arrowGroup.quaternion.setFromUnitVectors(upVec, dirVec);
+
+                        const headLen = arrowLen * 0.35;
+                        const shaftLen = Math.max(0.01, arrowLen - headLen);
+
+                        const shaft = arrowGroup.userData.shaft;
+                        const head = arrowGroup.userData.head;
+
+                        const shaftScaleX = (arrowLen * 0.16) / 0.03;
+                        shaft.scale.set(shaftScaleX, shaftLen, shaftScaleX);
+                        shaft.position.y = shaftLen * 0.5;
+
+                        const headScaleX = (arrowLen * 0.16) / 0.09;
+                        head.scale.set(headScaleX, headLen / 0.35, headScaleX);
+                        head.position.y = shaftLen + headLen * 0.5;
+
+                        shaft.material.color.copy(tmpColor);
+                        shaft.material.emissive.copy(tmpColor);
+                        head.material.color.copy(tmpColor);
+                        head.material.emissive.copy(tmpColor);
+
+                        eFieldGroup.add(arrowGroup);
+                    }
+                }
+            }
+        }
+
+        // ============================================================
+        //  10. 电动势计算与指针表盘
         // ============================================================
         const phiMax = 1.0, sigma = 1.2;
         let prevPhi = phiMax * Math.exp(-(magnetGroup.position.z ** 2) / (2 * sigma * sigma));
 
-        // 平滑后的电动势（用于显示）
         let smoothedEMF = 0;
-        // 原始电动势（用于指针，响应稍快）
         let rawEMF = 0;
 
-        // 表盘范围（伏特）
         const METER_MAX = 3.0;
-
-        // 表盘角度范围：-135° 到 +135°
-        const METER_ANGLE_MIN = -135;
-        const METER_ANGLE_MAX = 135;
-
         const needleEl = document.getElementById('meter-needle');
         const meterValueEl = document.getElementById('meter-value');
-        const emfIndicatorEl = document.getElementById('emf-indicator');
 
-        // 生成表盘刻度
         (function buildMeterTicks() {
             const ticksGroup = document.getElementById('meter-ticks');
-            const cx = 160, cy = 130;
             const rOuter = 105;
             const rMajor = 88;
             const rMinor = 95;
             const rLabel = 76;
 
-            // 主刻度：7 个（-135° 到 +135°，每 45° 一个）
-            for (let i = 0; i <= 6; i++) {
-                const angleDeg = METER_ANGLE_MIN + (i / 6) * (METER_ANGLE_MAX - METER_ANGLE_MIN);
-                const angleRad = (angleDeg - 90) * Math.PI / 180; // 让 0° 指向正上方
-                // 实际上我们希望 -135° 指向左下，+135° 指向右下
-                // 在 SVG 中，角度从 +x 轴开始逆时针。我们的圆弧从 55,118 到 265,118，
-                // 圆心 (160,130)，半径约 105。左端点角度约 -160°，右端点约 -20°。
-                // 所以我们使用与圆弧一致的参数：角度从 -160° 到 -20° 映射到 -135° 到 +135° 的读数。
-            }
-
-            // 直接使用圆弧的几何：圆心 (160,130)，半径 105。
-            // 圆弧起点 (55,118) 对应角度 atan2(118-130, 55-160) = atan2(-12, -105) ≈ -173.5°
-            // 但我们的圆弧路径是 A 105 105 0 0 1 265 118，说明是大弧？不，sweep=1 表示顺时针。
-            // 实际上从 (55,118) 顺时针到 (265,118) 经过上方，是一个约 200° 的弧。
-            // 为了简化，我们直接用参数方程放置刻度。
-            // 圆弧的圆心 (160,130)，半径 105。起始角 ≈ -173.5°（在 SVG 坐标系中，y 向下，所以实际是左上）
-            // 终止角 ≈ -6.5°（右上）。
-            // 但我们希望刻度对称，从 -160° 到 -20°（以正上方为 0° 不方便）。
-            // 改为：使用极角 phi，从 200° 到 340°（在数学坐标系中，y 向下时角度顺时针增加）。
-            // 简单方案：直接计算每个刻度在圆弧上的位置。
-            // 圆弧上点的参数：x = 160 + 105*cos(a), y = 130 + 105*sin(a)
-            // 我们需要 a 从约 190° 到约 350°（因为 y 向下，sin 为负表示上方）。
-            // 测试：a=190° -> cos=-0.985, sin=-0.174 -> x=56.6, y=111.8 （接近 55,118）
-            // a=350° -> cos=0.985, sin=-0.174 -> x=263.4, y=111.8 （接近 265,118）
-            // 所以 a 范围 190° 到 350°，对应读数 -135 到 +135。
             const aStart = 190, aEnd = 350;
-            const totalTicks = 28; // 28 个刻度（包括主刻度）
+            const totalTicks = 28;
+
+            const fragment = document.createDocumentFragment();
 
             for (let i = 0; i <= totalTicks; i++) {
                 const t = i / totalTicks;
                 const aDeg = aStart + t * (aEnd - aStart);
                 const aRad = aDeg * Math.PI / 180;
-
-                const isMajor = (i % 4 === 0); // 每 4 个刻度一个主刻度
+                const isMajor = (i % 4 === 0);
 
                 const x1 = 160 + rOuter * Math.cos(aRad);
                 const y1 = 130 + rOuter * Math.sin(aRad);
@@ -1177,9 +1327,8 @@
                 line.setAttribute('x2', x2.toFixed(1));
                 line.setAttribute('y2', y2.toFixed(1));
                 line.setAttribute('class', isMajor ? 'meter-tick meter-tick-major' : 'meter-tick');
-                ticksGroup.appendChild(line);
+                fragment.appendChild(line);
 
-                // 主刻度标签
                 if (isMajor) {
                     const reading = -METER_MAX + (i / totalTicks) * (2 * METER_MAX);
                     const lx = 160 + rLabel * Math.cos(aRad);
@@ -1189,27 +1338,21 @@
                     text.setAttribute('y', (ly + 3).toFixed(1));
                     text.setAttribute('class', 'meter-tick-label');
                     text.textContent = reading.toFixed(1);
-                    ticksGroup.appendChild(text);
+                    fragment.appendChild(text);
                 }
             }
+            ticksGroup.appendChild(fragment);
         })();
 
-        // 将电动势值映射到指针角度
         function emfToAngle(emf) {
-            // 限制在 [-METER_MAX, METER_MAX]
             const clamped = Math.max(-METER_MAX, Math.min(METER_MAX, emf));
             const t = (clamped + METER_MAX) / (2 * METER_MAX);
-            // 映射到圆弧角度范围：190° 到 350°
             const aDeg = 190 + t * (350 - 190);
-            // SVG 旋转：默认指针竖直向上（0°），需要旋转到目标角度
-            // 指针初始方向：从 (160,130) 到 (160,35)，即竖直向上，对应角度 -90°（在 SVG 坐标系中）。
-            // 目标方向的角度为 aDeg（从 +x 轴起算，顺时针为正，因为 y 向下）。
-            // 旋转角度 = aDeg - (-90) = aDeg + 90
             return aDeg + 90;
         }
 
         // ============================================================
-        //  10. 自动移动控制
+        //  11. 自动移动控制
         // ============================================================
         let autoMove = false;
         let autoSpeed = 1.0;
@@ -1223,6 +1366,57 @@
         const speedValue = document.getElementById('speedValue');
         const densitySlider = document.getElementById('densitySlider');
         const densityValue = document.getElementById('densityValue');
+
+        const showEFieldCheckbox = document.getElementById('showEField');
+        const efieldDensityGroup = document.getElementById('efieldDensityGroup');
+
+        let currentEFieldDensity = 2;
+
+        function updateEFieldDensityButtons() {
+            const buttons = efieldDensityGroup.querySelectorAll('.btn');
+            buttons.forEach(btn => {
+                const d = parseInt(btn.getAttribute('data-density'));
+                if (d === currentEFieldDensity) {
+                    btn.classList.add('btn-active');
+                } else {
+                    btn.classList.remove('btn-active');
+                }
+            });
+        }
+
+        efieldDensityGroup.addEventListener('click', (e) => {
+            const btn = e.target.closest('.btn');
+            if (!btn) return;
+            const d = parseInt(btn.getAttribute('data-density'));
+            currentEFieldDensity = d;
+            updateEFieldDensityButtons();
+            if (d === 0) {
+                eFieldGroup.visible = false;
+                releaseAllEArrows();
+            } else {
+                eFieldGroup.visible = showEFieldCheckbox.checked;
+                if (showEFieldCheckbox.checked) {
+                    // 如果当前是暂停状态，需要按暂停时的速度重建电场
+                    const vel = isPaused ? frozenVelocity : currentMagnetVelocity;
+                    buildEFieldArrows(d, vel);
+                }
+            }
+        });
+
+        showEFieldCheckbox.addEventListener('change', (e) => {
+            if (currentEFieldDensity === 0) {
+                eFieldGroup.visible = false;
+                releaseAllEArrows();
+                return;
+            }
+            eFieldGroup.visible = e.target.checked;
+            if (!e.target.checked) {
+                releaseAllEArrows();
+            } else {
+                const vel = isPaused ? frozenVelocity : currentMagnetVelocity;
+                buildEFieldArrows(currentEFieldDensity, vel);
+            }
+        });
 
         autoToggle.addEventListener('change', (e) => {
             autoMove = e.target.checked;
@@ -1253,7 +1447,57 @@
         });
 
         // ============================================================
-        //  11. 拖动逻辑
+        //  12. 暂停/继续 控制
+        // ============================================================
+        let isPaused = false;
+        let frozenVelocity = 0;       // 暂停瞬间的速度（用于重建电场）
+        let frozenTargetZ = 0;        // 暂停瞬间的目标位置
+
+        const pauseBtn = document.getElementById('pauseBtn');
+        const pauseIcon = document.getElementById('pauseIcon');
+        const pauseText = document.getElementById('pauseText');
+        const pauseStateEl = document.getElementById('info-pause-state');
+
+        function updatePauseUI() {
+            if (isPaused) {
+                pauseIcon.textContent = '▶';
+                pauseText.textContent = '继续运动';
+                pauseBtn.classList.add('btn-paused');
+                pauseStateEl.textContent = '⏸ 已暂停（场已冻结）';
+            } else {
+                pauseIcon.textContent = '⏸';
+                pauseText.textContent = '暂停运动';
+                pauseBtn.classList.remove('btn-paused');
+                pauseStateEl.textContent = '▶ 运行中';
+            }
+        }
+
+        pauseBtn.addEventListener('click', () => {
+            isPaused = !isPaused;
+
+            if (isPaused) {
+                // 暂停：冻结所有运动
+                frozenVelocity = smoothedVelocity;   // 保留暂停瞬间的速度（电场强度）
+                frozenTargetZ = magnetGroup.position.z;
+                targetMagnetZ = magnetGroup.position.z;
+
+                // 重建一次电场（保留当前场分布，不因暂停而清空）
+                if (showEFieldCheckbox.checked && currentEFieldDensity > 0) {
+                    // 用冻结的速度重建，确保电场保留
+                    buildEFieldArrows(currentEFieldDensity, frozenVelocity);
+                }
+            } else {
+                // 继续：恢复自动移动的基准位置
+                if (autoMove) {
+                    autoPos = magnetGroup.position.z;
+                    autoDir = autoPos < 0 ? 1 : -1;
+                }
+            }
+            updatePauseUI();
+        });
+
+        // ============================================================
+        //  13. 拖动逻辑
         // ============================================================
         let isDragging = false;
         let lastX = 0;
@@ -1265,8 +1509,9 @@
         const camForward = new THREE.Vector3();
         const camUp = new THREE.Vector3();
 
-        canvas.addEventListener('pointerdown', (e) => {
+        function onPointerDown(e) {
             if (e.button === 0) {
+                // 暂停状态下允许拖动（但仅移动磁铁，不会恢复运动）
                 isDragging = true;
                 lastX = e.clientX;
                 targetMagnetZ = magnetGroup.position.z;
@@ -1274,9 +1519,9 @@
                 canvas.style.cursor = 'grabbing';
                 e.preventDefault();
             }
-        });
+        }
 
-        window.addEventListener('pointermove', (e) => {
+        function onPointerMove(e) {
             if (isDragging) {
                 const dx = e.clientX - lastX;
                 lastX = e.clientX;
@@ -1287,75 +1532,114 @@
                 targetMagnetZ += dx * zProjection * (SENSITIVITY / window.innerWidth) * 2;
                 targetMagnetZ = Math.max(-5.0, Math.min(5.0, targetMagnetZ));
             }
-        });
+        }
 
-        window.addEventListener('pointerup', (e) => {
+        function onPointerUp(e) {
             if (e.button === 0 && isDragging) {
                 isDragging = false;
                 controls.enabled = true;
                 canvas.style.cursor = 'default';
-                if (autoMove) {
+                if (autoMove && !isPaused) {
                     autoPos = magnetGroup.position.z;
                     if (autoPos >= AUTO_AMPLITUDE - 0.1) autoDir = -1;
                     else if (autoPos <= -AUTO_AMPLITUDE + 0.1) autoDir = 1;
                 }
             }
-        });
+        }
 
-        window.addEventListener('pointercancel', () => {
+        function onPointerCancel() {
             if (isDragging) {
                 isDragging = false;
                 controls.enabled = true;
                 canvas.style.cursor = 'default';
             }
-        });
+        }
 
-        window.addEventListener('keydown', (e) => {
+        function onKeyDown(e) {
             if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
                 const dir = e.key === 'ArrowRight' ? 1 : -1;
                 targetMagnetZ += dir * 0.15;
                 targetMagnetZ = Math.max(-5.0, Math.min(5.0, targetMagnetZ));
-                if (autoMove) {
+                if (autoMove && !isPaused) {
                     autoPos = targetMagnetZ;
                     if (autoPos >= AUTO_AMPLITUDE - 0.1) autoDir = -1;
                     else if (autoPos <= -AUTO_AMPLITUDE + 0.1) autoDir = 1;
                 }
             }
-        });
+            // 空格键快捷暂停/继续
+            if (e.code === 'Space') {
+                e.preventDefault();
+                pauseBtn.click();
+            }
+        }
+
+        canvas.addEventListener('pointerdown', onPointerDown);
+        window.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', onPointerUp);
+        window.addEventListener('pointercancel', onPointerCancel);
+        window.addEventListener('keydown', onKeyDown);
 
         // ============================================================
-        //  12. 初始化
+        //  14. 初始化
         // ============================================================
         buildFieldLines(currentDensity);
+        updateEFieldDensityButtons();
+        updatePauseUI();
 
         if (loadingEl) loadingEl.remove();
 
         // ============================================================
-        //  13. 窗口自适应
+        //  15. 窗口自适应
         // ============================================================
-        window.addEventListener('resize', () => {
+        function onResize() {
             const w = canvasWrap.clientWidth;
             const h = canvasWrap.clientHeight;
+            if (w === 0 || h === 0) return;
             camera.aspect = w / h;
             camera.updateProjectionMatrix();
             renderer.setSize(w, h);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        });
+        }
+        window.addEventListener('resize', onResize);
 
         // ============================================================
-        //  14. 动画循环
+        //  16. 动画循环
         // ============================================================
         const clock = new THREE.Clock();
-
-        // 数字显示节流
         let lastTextUpdate = 0;
-        const TEXT_UPDATE_INTERVAL = 0.1; // 秒
+        const TEXT_UPDATE_INTERVAL = 0.1;
+
+        let lastEFieldVelocity = 0;
+        let eFieldFrameSkip = 0;
+        const EFIELD_FRAME_SKIP = 6;
+
+        let smoothedVelocity = 0;
+        let animationId = null;
+        let isPageVisible = true;
+        let isDisposed = false;
 
         function animate() {
-            requestAnimationFrame(animate);
+            if (isDisposed || !isPageVisible) return;
+            animationId = requestAnimationFrame(animate);
+
             const delta = Math.min(clock.getDelta(), 0.1);
 
-            // 自动移动
+            // ---- 暂停时：冻结所有运动 ----
+            if (isPaused) {
+                // 磁铁保持在当前位置（不做任何更新）
+                magnetGroup.position.z = frozenTargetZ;
+                targetMagnetZ = frozenTargetZ;
+                currentMagnetVelocity = frozenVelocity;
+                smoothedVelocity = frozenVelocity;
+
+                // 磁场线、电场箭头、表盘都保持原样
+                // 只更新渲染和相机控制
+                controls.update();
+                renderer.render(scene, camera);
+                return;
+            }
+
+            // ---- 正常运行 ----
             if (autoMove && !isDragging) {
                 const step = AUTO_BASE_SPEED * autoSpeed * delta;
                 autoPos += autoDir * step;
@@ -1369,34 +1653,31 @@
                 targetMagnetZ = autoPos;
             }
 
-            // 平滑跟随
+            const zBefore = magnetGroup.position.z;
             magnetGroup.position.z += (targetMagnetZ - magnetGroup.position.z) * 0.18;
+            const zAfter = magnetGroup.position.z;
+            const instantVelocity = delta > 0.001 ? (zAfter - zBefore) / delta : 0;
+            smoothedVelocity += (instantVelocity - smoothedVelocity) * 0.3;
+            currentMagnetVelocity = smoothedVelocity;
 
             magnetLight.position.set(0, 1.5, magnetGroup.position.z);
 
-            // 电动势计算
             const z = magnetGroup.position.z;
             const phi = phiMax * Math.exp(-(z * z) / (2 * sigma * sigma));
             const dPhi = delta > 0.001 ? (phi - prevPhi) / delta : 0;
             const instantEMF = -dPhi * 0.8;
 
-            // 指针用值：中等平滑（响应快但不过冲）
             rawEMF += (instantEMF - rawEMF) * 0.25;
-
-            // 数字用值：强平滑（避免跳动）
             smoothedEMF += (instantEMF - smoothedEMF) * 0.08;
 
-            // 更新指针角度
             const angle = emfToAngle(rawEMF);
             needleEl.style.transform = `rotate(${angle}deg)`;
 
-            // 数字显示：节流更新
             const now = performance.now();
             if (now - lastTextUpdate > TEXT_UPDATE_INTERVAL * 1000) {
                 lastTextUpdate = now;
                 meterValueEl.textContent = smoothedEMF.toFixed(2);
 
-                // 颜色随电动势变化
                 if (Math.abs(smoothedEMF) > 1.5) {
                     meterValueEl.style.fill = '#ff6644';
                 } else if (Math.abs(smoothedEMF) > 0.6) {
@@ -1407,20 +1688,93 @@
             }
 
             document.getElementById('info-position').textContent = `z = ${magnetGroup.position.z.toFixed(2)}`;
-
             prevPhi = phi;
 
-            if (scene.userData.stars) {
-                scene.userData.stars.rotation.y += delta * 0.008;
+            // 电场更新（密度为0或未勾选时跳过）
+            if (showEFieldCheckbox.checked && currentEFieldDensity > 0) {
+                eFieldFrameSkip++;
+                const velocityChanged = Math.abs(smoothedVelocity - lastEFieldVelocity) > 0.05;
+                if (eFieldFrameSkip >= EFIELD_FRAME_SKIP || velocityChanged) {
+                    eFieldFrameSkip = 0;
+                    lastEFieldVelocity = smoothedVelocity;
+                    buildEFieldArrows(currentEFieldDensity, smoothedVelocity);
+                }
+            }
+
+            if (scene.userData.stars && (Math.floor(now / 50) % 3 === 0)) {
+                scene.userData.stars.rotation.y += delta * 0.008 * 3;
             }
 
             controls.update();
             renderer.render(scene, camera);
         }
 
+        // ============================================================
+        //  17. 页面可见性 & 卸载清理
+        // ============================================================
+        function disposeScene() {
+            isDisposed = true;
+            if (animationId !== null) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+
+            canvas.removeEventListener('pointerdown', onPointerDown);
+            window.removeEventListener('pointermove', onPointerMove);
+            window.removeEventListener('pointerup', onPointerUp);
+            window.removeEventListener('pointercancel', onPointerCancel);
+            window.removeEventListener('keydown', onKeyDown);
+            window.removeEventListener('resize', onResize);
+            document.removeEventListener('visibilitychange', onVisibilityChange);
+            window.removeEventListener('beforeunload', disposeScene);
+            window.removeEventListener('pagehide', disposeScene);
+
+            scene.traverse((obj) => {
+                if (obj.geometry) obj.geometry.dispose();
+                if (obj.material) {
+                    if (Array.isArray(obj.material)) {
+                        obj.material.forEach(m => m.dispose());
+                    } else {
+                        obj.material.dispose();
+                    }
+                }
+            });
+
+            eArrowShaftGeo.dispose();
+            eArrowHeadGeo.dispose();
+
+            controls.dispose();
+            renderer.dispose();
+            renderer.forceContextLoss();
+
+            if (renderer.domElement && renderer.domElement.parentNode) {
+                renderer.domElement.parentNode.removeChild(renderer.domElement);
+            }
+        }
+
+        function onVisibilityChange() {
+            if (document.hidden) {
+                isPageVisible = false;
+                if (animationId !== null) {
+                    cancelAnimationFrame(animationId);
+                    animationId = null;
+                }
+            } else {
+                isPageVisible = true;
+                clock.getDelta();
+                if (animationId === null && !isDisposed) {
+                    animate();
+                }
+            }
+        }
+
+        document.addEventListener('visibilitychange', onVisibilityChange);
+        window.addEventListener('beforeunload', disposeScene);
+        window.addEventListener('pagehide', disposeScene);
+
         animate();
 
-        console.log('%c⚡ 法拉第电磁感应 · 指针式表盘已启动',
+        console.log('%c⚡ 法拉第电磁感应 · 暂停功能已添加（暂停时保留场）',
             'color:#ffaa00; font-weight:bold; font-size:14px;');
 
     } catch (err) {

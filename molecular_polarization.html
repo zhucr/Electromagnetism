@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>大量分子极化 · 无极 vs 有极 · 热运动 + 可调电场</title>
+    <style>
+        :root {
+            --ahnu-blue: #003d7a;
+            --ahnu-gold: #c9a227;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', 'PingFang SC', Roboto, system-ui, -apple-system, sans-serif;
+            background: #0b1219;
+            color: #e8edf3;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            background: linear-gradient(90deg, var(--ahnu-blue) 0%, #0056a3 100%);
+            color: white;
+            padding: 0 40px;
+            display: flex;
+            align-items: center;
+            height: 64px;
+            box-shadow: 0 4px 20px rgba(0, 61, 122, 0.25);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            flex-shrink: 0;
+        }
+        .header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 2px;
+        }
+        .header .back {
+            margin-left: auto;
+            color: white;
+            text-decoration: none;
+            font-size: 13px;
+            opacity: 0.85;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: opacity 0.2s;
+        }
+        .header .back:hover {
+            opacity: 1;
+        }
+        #app {
+            display: flex;
+            flex: 1;
+            width: 100%;
+            background: rgba(18, 28, 40, 0.75);
+            backdrop-filter: blur(6px);
+            overflow: hidden;
+        }
+        #canvas-wrap {
+            flex: 1;
+            position: relative;
+            background: #0a0f16;
+            overflow: hidden;
+            display: flex;
+        }
+        #canvas-wrap canvas {
+            display: block;
+            width: 50%;
+            height: 100%;
+            cursor: crosshair;
+        }
+        #canvasNonPolar {
+            border-right: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .canvas-label {
+            position: absolute;
+            top: 16px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #b6d0e8;
+            letter-spacing: 1px;
+            pointer-events: none;
+            user-select: none;
+            background: rgba(0, 0, 0, 0.35);
+            padding: 4px 16px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            z-index: 5;
+        }
+        #labelNonPolar {
+            left: 20px;
+        }
+        #labelPolar {
+            left: calc(50% + 20px);
+        }
+        #coordinate-info {
+            position: absolute;
+            bottom: 16px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(4px);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 400;
+            color: #a0b8d0;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            pointer-events: none;
+            user-select: none;
+            z-index: 5;
+        }
+        #panel {
+            width: 310px;
+            min-width: 310px;
+            padding: 22px 20px 26px;
+            background: rgba(12, 20, 30, 0.85);
+            backdrop-filter: blur(12px);
+            border-left: 1px solid rgba(255, 255, 255, 0.05);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        #panel::-webkit-scrollbar {
+            width: 4px;
+        }
+        #panel::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+        }
+        .panel-title {
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            background: linear-gradient(135deg, #b0d0ff, #7a9eff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .section {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 14px;
+            padding: 14px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            transition: border-color 0.2s;
+        }
+        .section:hover {
+            border-color: rgba(255, 255, 255, 0.08);
+        }
+        .section-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #9ab0cc;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .section-label .badge {
+            font-size: 10px;
+            background: rgba(255, 255, 255, 0.06);
+            padding: 0 10px;
+            border-radius: 12px;
+            color: #6a8aaa;
+        }
+        .btn-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            flex: 1;
+            min-width: 60px;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #e8edf3;
+            background: rgba(255, 255, 255, 0.06);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            letter-spacing: 0.3px;
+            border: 1px solid transparent;
+        }
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        .btn:active {
+            transform: scale(0.97);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #2a4a7a, #1a3560);
+            border-color: rgba(255, 255, 255, 0.08);
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #3a5a8a, #2a4570);
+        }
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.04);
+        }
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.10);
+        }
+        .input-field {
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 6px 10px;
+            color: #e8edf3;
+            font-size: 13px;
+            width: 100%;
+            transition: border-color 0.2s;
+            outline: none;
+            font-family: inherit;
+        }
+        .input-field:focus {
+            border-color: rgba(100, 160, 255, 0.4);
+            background: rgba(0, 0, 0, 0.5);
+        }
+        .slider-group {
+            margin-top: 6px;
+        }
+        .slider-group label {
+            font-size: 12px;
+            color: #7a90aa;
+            display: flex;
+            justify-content: space-between;
+        }
+        .slider-group label span {
+            color: #b0c8e0;
+            font-weight: 500;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 4px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.10);
+            outline: none;
+            margin: 6px 0 4px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #5a8ad0, #3a6aaa);
+            cursor: pointer;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+            transition: 0.15s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #5a8ad0, #3a6aaa);
+            cursor: pointer;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .info-item {
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 8px;
+            padding: 8px 12px;
+            text-align: center;
+        }
+        .info-item .label {
+            font-size: 11px;
+            color: #6a80a0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .info-item .value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #d0e4ff;
+            margin-top: 2px;
+            font-variant-numeric: tabular-nums;
+        }
+        .info-item .value.warm {
+            color: #f0c060;
+        }
+        .info-item .value.cool {
+            color: #70b0f0;
+        }
+        .legend-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 16px;
+            margin-top: 4px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #9ab0cc;
+        }
+        .legend-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .legend-line {
+            width: 20px;
+            height: 3px;
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
+        @media (max-width: 900px) {
+            #app {
+                flex-direction: column;
+                height: auto;
+                width: 100vw;
+                backdrop-filter: none;
+            }
+            #panel {
+                width: 100%;
+                min-width: unset;
+                max-height: 45vh;
+                border-left: none;
+                border-top: 1px solid rgba(255, 255, 255, 0.05);
+                padding: 16px;
+            }
+            #canvas-wrap {
+                height: 55vh;
+            }
+        }
+        @media (max-width: 500px) {
+            #panel {
+                padding: 12px;
+                gap: 10px;
+            }
+            .section {
+                padding: 10px 12px;
+            }
+            .btn {
+                font-size: 12px;
+                padding: 6px 10px;
+                min-width: 50px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <h1>⚡ 大量分子极化 · 无极 vs 有极 · 热运动</h1>
+        <a class="back" href="index.html">← 返回实验大厅</a>
+    </header>
+
+    <div id="app">
+        <div id="canvas-wrap">
+            <canvas id="canvasNonPolar"></canvas>
+            <canvas id="canvasPolar"></canvas>
+            <div class="canvas-label" id="labelNonPolar">无极分子 (位移极化)</div>
+            <div class="canvas-label" id="labelPolar">有极分子 (取向极化)</div>
+            <div id="coordinate-info">电场: 向右 (E > 0)</div>
+        </div>
+
+        <div id="panel">
+            <div class="panel-title">⚡ 分子极化 + 热运动</div>
+
+            <!-- 电场控制 -->
+            <div class="section">
+                <div class="section-label">
+                    ⚡ 电场强度 E
+                    <span class="badge" id="fieldValue">中 (向右)</span>
+                </div>
+                <div class="slider-group">
+                    <label>方向与大小 <span id="fieldDisplay">+60</span></label>
+                    <input type="range" id="fieldSlider" min="-100" max="100" step="1" value="60" />
+                    <div style="display:flex; justify-content:space-between; font-size:11px; color:#6a80a0; margin-top:2px;">
+                        <span>← 负 (向左)</span>
+                        <span>零</span>
+                        <span>正 (向右) →</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 热运动控制 -->
+            <div class="section">
+                <div class="section-label">
+                    🌡️ 热运动强度
+                    <span class="badge" id="thermalValue">中</span>
+                </div>
+                <div class="slider-group">
+                    <label>温度 T <span id="thermalDisplay">1.0</span></label>
+                    <input type="range" id="thermalSlider" min="0" max="3.0" step="0.1" value="1.0" />
+                </div>
+                <div style="font-size:11px; color:#6a8aaa; background:rgba(0,0,0,0.2); border-radius:8px; padding:6px 10px; margin-top:6px; border-left:2px solid rgba(255,120,80,0.3);">
+                    🔥 热运动使分子位置抖动、偶极矩方向随机偏转
+                </div>
+            </div>
+
+            <!-- 分子管理 -->
+            <div class="section">
+                <div class="section-label">
+                    🧬 分子管理
+                    <span class="badge" id="particleCount">28 个</span>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="addMolecule()">＋ 添加</button>
+                    <button class="btn btn-secondary" onclick="removeMolecule()">✕ 删除</button>
+                </div>
+            </div>
+
+            <!-- 极化视觉参数 -->
+            <div class="section">
+                <div class="section-label">🎯 极化视觉参数</div>
+                <div class="slider-group">
+                    <label>无极分子位移幅度 <span id="shiftDisplay">1.0</span></label>
+                    <input type="range" id="shiftSlider" min="0.2" max="2.0" step="0.1" value="1.0" />
+                </div>
+                <div class="slider-group">
+                    <label>有极分子间距增幅 <span id="stretchDisplay">1.0</span></label>
+                    <input type="range" id="stretchSlider" min="0.2" max="2.0" step="0.1" value="1.0" />
+                </div>
+            </div>
+
+            <!-- 外观设置 -->
+            <div class="section">
+                <div class="section-label">🎨 外观设置</div>
+                <div class="slider-group">
+                    <label>分子大小 <span id="sizeDisplay">8</span></label>
+                    <input type="range" id="sizeSlider" min="4" max="16" step="1" value="8" />
+                </div>
+            </div>
+
+            <!-- 仿真控制 -->
+            <div class="section">
+                <div class="section-label">⏯️ 仿真控制</div>
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="resetSimulation()">⟲ 重置</button>
+                    <button class="btn btn-secondary" onclick="toggleAnimation()" id="pauseBtn">⏸ 暂停</button>
+                </div>
+            </div>
+
+            <!-- 场信息 -->
+            <div class="section">
+                <div class="section-label">📊 场信息</div>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="label">无极分子位移</div>
+                        <div class="value cool" id="nonPolarShift">0.00</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">有极分子取向度</div>
+                        <div class="value warm" id="polarAlign">0.00</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 图例 -->
+            <div class="section" style="border-color:rgba(255,255,255,0.03);">
+                <div class="section-label" style="margin-bottom:4px;">🎨 图例</div>
+                <div class="legend-grid">
+                    <span class="legend-item"><span class="legend-dot" style="background:#ff5a5a;"></span> 正电荷</span>
+                    <span class="legend-item"><span class="legend-dot" style="background:#4a8aff;"></span> 负电荷</span>
+                </div>
+                <div class="legend-grid" style="margin-top:6px;">
+                    <span class="legend-item"><span class="legend-line" style="background:linear-gradient(90deg,#1a4a7a,#40b0a0,#d0b030,#d06040);"></span> 电场方向</span>
+                    <span class="legend-item"><span class="legend-line" style="background:rgba(255,120,80,0.6);"></span> 热运动抖动</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ================================================================
+        // 1. DOM 引用 & 常量
+        // ================================================================
+        const canvasNP = document.getElementById('canvasNonPolar');
+        const canvasP = document.getElementById('canvasPolar');
+        const ctxNP = canvasNP.getContext('2d');
+        const ctxP = canvasP.getContext('2d');
+        const wrap = document.getElementById('canvas-wrap');
+
+        let W, H, CX, CY;
+        let moleculeRadius = 8;
+        const MAX_MOLECULES = 48;
+        const MIN_MOLECULES = 6;
+
+        // 电场值：-100 到 100
+        let fieldValue = 60;
+
+        // 热运动强度：0 ~ 3
+        let thermalStrength = 1.0;
+
+        // 视觉缩放系数
+        let shiftScale = 1.0;
+        let stretchScale = 1.0;
+
+        // 暂停/动画
+        let isAnimating = true;
+        let animFrame = null;
+        let needsRedraw = true;
+
+        // 时间（用于热运动相位）
+        let time = 0;
+
+        // ================================================================
+        // 2. 分子数据
+        // ================================================================
+        // 无极分子：位置 + 热运动相位偏移
+        let nonPolarMolecules = [];
+        // 有极分子：位置 + 初始角度 + 热运动相位偏移
+        let polarMolecules = [];
+
+        function seededRandom(seed) {
+            let x = Math.sin(seed) * 10000;
+            return x - Math.floor(x);
+        }
+
+        function generateMolecules(count) {
+            nonPolarMolecules = [];
+            polarMolecules = [];
+            const margin = 60;
+            for (let i = 0; i < count; i++) {
+                // 无极分子
+                const x1 = margin + seededRandom(i * 7 + 2) * (W - 2 * margin);
+                const y1 = margin + seededRandom(i * 13 + 5) * (H - 2 * margin);
+                nonPolarMolecules.push({
+                    id: i + 1,
+                    x: x1, y: y1,
+                    baseX: x1, baseY: y1,
+                    phase: seededRandom(i * 31 + 13) * Math.PI * 2
+                });
+
+                // 有极分子
+                const x2 = margin + seededRandom(i * 11 + 3) * (W - 2 * margin);
+                const y2 = margin + seededRandom(i * 17 + 7) * (H - 2 * margin);
+                const initAngle = seededRandom(i * 23 + 9) * Math.PI * 2;
+                polarMolecules.push({
+                    id: i + 1,
+                    x: x2, y: y2,
+                    baseX: x2, baseY: y2,
+                    initAngle: initAngle,
+                    phase: seededRandom(i * 37 + 11) * Math.PI * 2
+                });
+            }
+        }
+
+        // ================================================================
+        // 3. 热运动更新
+        // ================================================================
+        // 热运动：位置抖动 + 角度随机偏转
+        // 使用多个正弦波叠加，模拟不规则运动
+        function applyThermalMotion() {
+            const thermalAmp = thermalStrength * 6; // 位置抖动幅度(像素)
+
+            nonPolarMolecules.forEach((mol) => {
+                // 位置抖动：两个不同频率的正弦波叠加，产生不规则感
+                const t = time + mol.phase;
+                const dx = Math.sin(t * 1.3) * thermalAmp * 0.6
+                         + Math.sin(t * 2.7 + 1.2) * thermalAmp * 0.4;
+                const dy = Math.cos(t * 1.7 + 0.5) * thermalAmp * 0.6
+                         + Math.cos(t * 3.1 + 2.3) * thermalAmp * 0.4;
+
+                mol.x = mol.baseX + dx;
+                mol.y = mol.baseY + dy;
+
+                // 边界约束
+                const margin = 30;
+                mol.x = clamp(mol.x, margin, W - margin);
+                mol.y = clamp(mol.y, margin, H - margin);
+            });
+
+            polarMolecules.forEach((mol) => {
+                const t = time + mol.phase;
+                const dx = Math.sin(t * 1.5 + 0.3) * thermalAmp * 0.6
+                         + Math.sin(t * 2.9 + 1.8) * thermalAmp * 0.4;
+                const dy = Math.cos(t * 1.9 + 0.8) * thermalAmp * 0.6
+                         + Math.cos(t * 3.3 + 2.1) * thermalAmp * 0.4;
+
+                mol.x = mol.baseX + dx;
+                mol.y = mol.baseY + dy;
+
+                const margin = 30;
+                mol.x = clamp(mol.x, margin, W - margin);
+                mol.y = clamp(mol.y, margin, H - margin);
+
+                // 角度热扰动：在最终取向角上叠加随机偏转
+                // 电场越强，偏转越小（取向更稳定）
+                const fieldStrength = Math.abs(fieldValue) / 100;
+                const angleNoise = thermalStrength * (1 - fieldStrength * 0.7) * 0.8;
+                mol.thermalAngle = Math.sin(t * 2.1 + 0.4) * angleNoise
+                                 + Math.cos(t * 3.7 + 1.6) * angleNoise * 0.5;
+            });
+        }
+
+        // ================================================================
+        // 4. 坐标工具
+        // ================================================================
+        function toCanvas(ox, oy) {
+            return { x: ox + CX, y: CY - oy };
+        }
+        function toOrigin(cx, cy) {
+            return { x: cx - CX, y: CY - cy };
+        }
+        function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+        // ================================================================
+        // 5. 绘制电场背景
+        // ================================================================
+        function drawFieldBackground(ctx, fieldVal) {
+            const absField = Math.abs(fieldVal);
+            const strength = absField / 100;
+            const rightDirection = fieldVal > 0;
+
+            ctx.fillStyle = '#080e16';
+            ctx.fillRect(0, 0, W, H);
+
+            // 网格
+            ctx.save();
+            ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+            ctx.lineWidth = 1;
+            const step = 50;
+            for (let x = -Math.floor(CX / step) * step; x <= CX; x += step) {
+                if (Math.abs(x) < 1) continue;
+                const cx = CX + x;
+                ctx.beginPath();
+                ctx.moveTo(cx, 0);
+                ctx.lineTo(cx, H);
+                ctx.stroke();
+            }
+            for (let y = -Math.floor(CY / step) * step; y <= CY; y += step) {
+                if (Math.abs(y) < 1) continue;
+                const cy = CY - y;
+                ctx.beginPath();
+                ctx.moveTo(0, cy);
+                ctx.lineTo(W, cy);
+                ctx.stroke();
+            }
+            ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(0, CY);
+            ctx.lineTo(W, CY);
+            ctx.moveTo(CX, 0);
+            ctx.lineTo(CX, H);
+            ctx.stroke();
+            ctx.restore();
+
+            // 电场线（虚线）
+            const lineAlpha = 0.15 + strength * 0.6;
+            ctx.strokeStyle = `rgba(46, 85, 119, ${lineAlpha})`;
+            ctx.lineWidth = 1.2;
+            ctx.setLineDash([6, 8]);
+            const stepY = 45;
+            for (let y = 25; y < H; y += stepY) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(W, y);
+                ctx.stroke();
+            }
+            ctx.setLineDash([]);
+
+            if (absField < 3) {
+                ctx.font = 'bold 16px "Segoe UI", monospace';
+                ctx.fillStyle = '#5a7a99';
+                ctx.textAlign = 'center';
+                ctx.fillText('E ≈ 0', W / 2, 50);
+                ctx.textAlign = 'left';
+                return;
+            }
+
+            // 底部大箭头
+            const arrowY = H - 30;
+            const margin = 30;
+            const startX = rightDirection ? margin : W - margin;
+            const endX = rightDirection ? W - margin : margin;
+
+            const lineWidth = 1.5 + strength * 3;
+            ctx.beginPath();
+            ctx.strokeStyle = '#a6d0ff';
+            ctx.lineWidth = lineWidth;
+            ctx.moveTo(startX, arrowY);
+            ctx.lineTo(endX, arrowY);
+            ctx.stroke();
+
+            const headLen = 10 + strength * 10;
+            ctx.fillStyle = '#a6d0ff';
+            ctx.beginPath();
+            if (rightDirection) {
+                ctx.moveTo(endX, arrowY);
+                ctx.lineTo(endX - headLen, arrowY - headLen * 0.65);
+                ctx.lineTo(endX - headLen, arrowY + headLen * 0.65);
+            } else {
+                ctx.moveTo(endX, arrowY);
+                ctx.lineTo(endX + headLen, arrowY - headLen * 0.65);
+                ctx.lineTo(endX + headLen, arrowY + headLen * 0.65);
+            }
+            ctx.closePath();
+            ctx.fill();
+
+            // 小箭头
+            const smallAlpha = 0.3 + strength * 0.7;
+            ctx.fillStyle = `rgba(166, 208, 255, ${smallAlpha})`;
+            ctx.strokeStyle = `rgba(166, 208, 255, ${smallAlpha})`;
+            ctx.lineWidth = 1.8;
+            const arrowPositionsY = [70, 120, 170, 220, 270];
+            for (let y of arrowPositionsY) {
+                const midX = W / 2;
+                const arrowLen = 30;
+                const leftX = rightDirection ? midX - arrowLen / 2 : midX + arrowLen / 2;
+                const rightX = rightDirection ? midX + arrowLen / 2 : midX - arrowLen / 2;
+
+                ctx.beginPath();
+                ctx.moveTo(leftX, y);
+                ctx.lineTo(rightX, y);
+                ctx.stroke();
+
+                ctx.beginPath();
+                if (rightDirection) {
+                    ctx.moveTo(rightX, y);
+                    ctx.lineTo(rightX - 8, y - 6);
+                    ctx.lineTo(rightX - 8, y + 6);
+                } else {
+                    ctx.moveTo(rightX, y);
+                    ctx.lineTo(rightX + 8, y - 6);
+                    ctx.lineTo(rightX + 8, y + 6);
+                }
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            // E 标注
+            const fontSize = 14 + strength * 6;
+            ctx.font = `bold ${fontSize}px "Segoe UI", monospace`;
+            ctx.fillStyle = '#c0dcff';
+            ctx.fillText('E', W - 45, 45);
+            ctx.beginPath();
+            ctx.strokeStyle = '#c0dcff';
+            ctx.lineWidth = 2;
+            if (rightDirection) {
+                ctx.moveTo(W - 28, 40);
+                ctx.lineTo(W - 14, 40);
+                ctx.lineTo(W - 20, 34);
+                ctx.moveTo(W - 14, 40);
+                ctx.lineTo(W - 20, 46);
+            } else {
+                ctx.moveTo(W - 14, 40);
+                ctx.lineTo(W - 28, 40);
+                ctx.lineTo(W - 22, 34);
+                ctx.moveTo(W - 28, 40);
+                ctx.lineTo(W - 22, 46);
+            }
+            ctx.stroke();
+        }
+
+        // ================================================================
+        // 6. 绘制无极分子（叠加热运动）
+        // ================================================================
+        function drawNonPolarMolecules(ctx, fieldVal) {
+            const absField = Math.abs(fieldVal);
+            const strength = absField / 100;
+            const maxShift = 12 * shiftScale;
+            const shift = strength * maxShift;
+            const offset = fieldVal > 0 ? shift : -shift;
+
+            // 热运动带来的电荷中心随机涨落
+            const thermalJitter = thermalStrength * 1.5;
+
+            nonPolarMolecules.forEach((mol) => {
+                const { x: cx, y: cy, phase } = mol;
+
+                // 基础位移（电场诱导）
+                const basePosX = cx + offset;
+                const baseNegX = cx - offset;
+
+                // 热运动涨落：正负电荷中心各自微小的随机偏移
+                const t = time + phase;
+                const jitterPos = Math.sin(t * 4.1 + 1.3) * thermalJitter;
+                const jitterNeg = Math.cos(t * 3.7 + 2.1) * thermalJitter;
+
+                const posX = basePosX + jitterPos;
+                const negX = baseNegX + jitterNeg;
+                const posY = cy + Math.sin(t * 2.3 + 0.7) * thermalJitter * 0.5;
+                const negY = cy + Math.cos(t * 2.9 + 1.8) * thermalJitter * 0.5;
+
+                // 虚线连接
+                if (Math.abs(offset) > 0.5 || thermalJitter > 0.5) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = 'rgba(107, 138, 168, 0.6)';
+                    ctx.lineWidth = 1.3;
+                    ctx.setLineDash([3, 4]);
+                    ctx.moveTo(negX, negY);
+                    ctx.lineTo(posX, posY);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+
+                // 正电荷
+                ctx.shadowColor = '#ff7b72';
+                ctx.shadowBlur = 8 + strength * 12;
+                ctx.beginPath();
+                ctx.fillStyle = '#ff7b72';
+                ctx.arc(posX, posY, moleculeRadius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 负电荷
+                ctx.shadowColor = '#4faaff';
+                ctx.shadowBlur = 8 + strength * 12;
+                ctx.beginPath();
+                ctx.fillStyle = '#4faaff';
+                ctx.arc(negX, negY, moleculeRadius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 符号
+                ctx.shadowBlur = 0;
+                ctx.shadowColor = 'transparent';
+                ctx.font = `bold ${Math.max(10, moleculeRadius * 1.2)}px "Segoe UI", sans-serif`;
+                ctx.fillStyle = '#ffffff';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('+', posX, posY - 1);
+                ctx.fillText('−', negX, negY - 1);
+
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'alphabetic';
+            });
+        }
+
+        // ================================================================
+        // 7. 绘制有极分子（叠加热运动）
+        // ================================================================
+        function drawPolarMolecules(ctx, fieldVal) {
+            const absField = Math.abs(fieldVal);
+            const strength = absField / 100;
+            const targetAngle = fieldVal > 0 ? 0 : Math.PI;
+            const mixFactor = strength;
+
+            const baseBondLength = 18 * stretchScale;
+            const maxExtraLength = 12 * stretchScale;
+            const bondLength = baseBondLength + strength * maxExtraLength;
+
+            polarMolecules.forEach((mol) => {
+                const { x: cx, y: cy, initAngle, thermalAngle = 0 } = mol;
+
+                // 基础取向：初始角度与电场方向的混合
+                const initVecX = Math.cos(initAngle);
+                const initVecY = Math.sin(initAngle);
+                const targetVecX = Math.cos(targetAngle);
+                const targetVecY = Math.sin(targetAngle);
+
+                let mixX = initVecX * (1 - mixFactor) + targetVecX * mixFactor;
+                let mixY = initVecY * (1 - mixFactor) + targetVecY * mixFactor;
+
+                let baseAngle;
+                const len = Math.hypot(mixX, mixY);
+                if (len < 0.001) {
+                    baseAngle = targetAngle;
+                } else {
+                    mixX /= len;
+                    mixY /= len;
+                    baseAngle = Math.atan2(mixY, mixX);
+                }
+
+                // 叠加角度热扰动
+                const finalAngle = baseAngle + thermalAngle;
+
+                const half = bondLength / 2;
+                const posX = cx + half * Math.cos(finalAngle);
+                const posY = cy + half * Math.sin(finalAngle);
+                const negX = cx - half * Math.cos(finalAngle);
+                const negY = cy - half * Math.sin(finalAngle);
+
+                // 偶极矩连线
+                ctx.beginPath();
+                ctx.strokeStyle = 'rgba(123, 155, 188, 0.8)';
+                ctx.lineWidth = 1.5 + strength * 1.5;
+                ctx.moveTo(negX, negY);
+                ctx.lineTo(posX, posY);
+                ctx.stroke();
+
+                // 正电荷
+                ctx.shadowColor = '#ff7b72';
+                ctx.shadowBlur = 8 + strength * 12;
+                ctx.beginPath();
+                ctx.fillStyle = '#ff7b72';
+                ctx.arc(posX, posY, moleculeRadius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 负电荷
+                ctx.shadowColor = '#4faaff';
+                ctx.shadowBlur = 8 + strength * 12;
+                ctx.beginPath();
+                ctx.fillStyle = '#4faaff';
+                ctx.arc(negX, negY, moleculeRadius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 符号
+                ctx.shadowBlur = 0;
+                ctx.shadowColor = 'transparent';
+                ctx.font = `bold ${Math.max(10, moleculeRadius * 1.2)}px "Segoe UI", sans-serif`;
+                ctx.fillStyle = '#ffffff';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('+', posX, posY - 1);
+                ctx.fillText('−', negX, negY - 1);
+
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'alphabetic';
+            });
+        }
+
+        // ================================================================
+        // 8. 主渲染
+        // ================================================================
+        function render() {
+            if (!needsRedraw && !isAnimating) return;
+
+            // 更新时间
+            if (isAnimating) {
+                time += 0.015;
+                // 每帧都应用热运动并重绘
+                applyThermalMotion();
+            }
+
+            // 绘制无极分子画布
+            ctxNP.clearRect(0, 0, W, H);
+            drawFieldBackground(ctxNP, fieldValue);
+            drawNonPolarMolecules(ctxNP, fieldValue);
+
+            // 绘制有极分子画布
+            ctxP.clearRect(0, 0, W, H);
+            drawFieldBackground(ctxP, fieldValue);
+            drawPolarMolecules(ctxP, fieldValue);
+
+            // 更新信息
+            const absField = Math.abs(fieldValue);
+            const strength = absField / 100;
+            const maxShift = 12 * shiftScale;
+            const shift = strength * maxShift;
+            const nonPolarShiftEl = document.getElementById('nonPolarShift');
+            const polarAlignEl = document.getElementById('polarAlign');
+            if (nonPolarShiftEl) nonPolarShiftEl.textContent = shift.toFixed(2);
+            if (polarAlignEl) polarAlignEl.textContent = (strength * 100).toFixed(0) + '%';
+
+            const coordInfo = document.getElementById('coordinate-info');
+            if (coordInfo) {
+                const dir = fieldValue > 5 ? '向右' : (fieldValue < -5 ? '向左' : '零');
+                coordInfo.textContent = `电场: ${dir} (E = ${fieldValue > 0 ? '+' : ''}${fieldValue}) · 热运动 T=${thermalStrength.toFixed(1)}`;
+            }
+
+            needsRedraw = false;
+
+            if (isAnimating) {
+                animFrame = requestAnimationFrame(render);
+            } else {
+                animFrame = null;
+            }
+        }
+
+        // ================================================================
+        // 9. 交互事件
+        // ================================================================
+        const fieldSlider = document.getElementById('fieldSlider');
+        const fieldDisplay = document.getElementById('fieldDisplay');
+        const fieldValueLabel = document.getElementById('fieldValue');
+
+        fieldSlider.addEventListener('input', (e) => {
+            fieldValue = parseInt(e.target.value, 10);
+            fieldDisplay.textContent = (fieldValue > 0 ? '+' : '') + fieldValue;
+            updateFieldLabel();
+            needsRedraw = true;
+            if (!isAnimating) render();
+        });
+
+        function updateFieldLabel() {
+            const absVal = Math.abs(fieldValue);
+            let strengthText = '';
+            if (absVal < 5) strengthText = '零';
+            else if (absVal < 30) strengthText = '弱';
+            else if (absVal < 60) strengthText = '中弱';
+            else if (absVal < 85) strengthText = '中';
+            else strengthText = '强';
+
+            if (fieldValue > 5) {
+                fieldValueLabel.textContent = `${strengthText} (向右)`;
+            } else if (fieldValue < -5) {
+                fieldValueLabel.textContent = `${strengthText} (向左)`;
+            } else {
+                fieldValueLabel.textContent = '零';
+            }
+        }
+
+        // 热运动滑块
+        const thermalSlider = document.getElementById('thermalSlider');
+        const thermalDisplay = document.getElementById('thermalDisplay');
+        const thermalValueEl = document.getElementById('thermalValue');
+
+        thermalSlider.addEventListener('input', (e) => {
+            thermalStrength = parseFloat(e.target.value);
+            thermalDisplay.textContent = thermalStrength.toFixed(1);
+            const absT = thermalStrength;
+            if (absT < 0.3) thermalValueEl.textContent = '极低';
+            else if (absT < 0.8) thermalValueEl.textContent = '低';
+            else if (absT < 1.5) thermalValueEl.textContent = '中';
+            else if (absT < 2.2) thermalValueEl.textContent = '高';
+            else thermalValueEl.textContent = '极高';
+            needsRedraw = true;
+            if (!isAnimating) render();
+        });
+
+        // 视觉参数
+        const shiftSlider = document.getElementById('shiftSlider');
+        const shiftDisplay = document.getElementById('shiftDisplay');
+        shiftSlider.addEventListener('input', (e) => {
+            shiftScale = parseFloat(e.target.value);
+            shiftDisplay.textContent = shiftScale.toFixed(1);
+            needsRedraw = true;
+            if (!isAnimating) render();
+        });
+
+        const stretchSlider = document.getElementById('stretchSlider');
+        const stretchDisplay = document.getElementById('stretchDisplay');
+        stretchSlider.addEventListener('input', (e) => {
+            stretchScale = parseFloat(e.target.value);
+            stretchDisplay.textContent = stretchScale.toFixed(1);
+            needsRedraw = true;
+            if (!isAnimating) render();
+        });
+
+        const sizeSlider = document.getElementById('sizeSlider');
+        const sizeDisplay = document.getElementById('sizeDisplay');
+        sizeSlider.addEventListener('input', (e) => {
+            moleculeRadius = parseInt(e.target.value, 10);
+            sizeDisplay.textContent = moleculeRadius;
+            needsRedraw = true;
+            if (!isAnimating) render();
+        });
+
+        // 分子数量
+        const particleCountEl = document.getElementById('particleCount');
+
+        function updateCount() {
+            const count = nonPolarMolecules.length;
+            if (particleCountEl) particleCountEl.textContent = count + ' 个';
+        }
+
+        function addMolecule() {
+            if (nonPolarMolecules.length >= MAX_MOLECULES) {
+                alert('最多 ' + MAX_MOLECULES + ' 个分子');
+                return;
+            }
+            const id = nonPolarMolecules.length + 1;
+            const margin = 60;
+            const newX = margin + Math.random() * (W - 2 * margin);
+            const newY = margin + Math.random() * (H - 2 * margin);
+            const phase = Math.random() * Math.PI * 2;
+            nonPolarMolecules.push({
+                id, x: newX, y: newY,
+                baseX: newX, baseY: newY,
+                phase: phase
+            });
+
+            const newX2 = margin + Math.random() * (W - 2 * margin);
+            const newY2 = margin + Math.random() * (H - 2 * margin);
+            const initAngle = Math.random() * Math.PI * 2;
+            polarMolecules.push({
+                id,
+                x: newX2, y: newY2,
+                baseX: newX2, baseY: newY2,
+                initAngle: initAngle,
+                phase: Math.random() * Math.PI * 2,
+                thermalAngle: 0
+            });
+
+            updateCount();
+            needsRedraw = true;
+            if (!isAnimating) render();
+        }
+
+        function removeMolecule() {
+            if (nonPolarMolecules.length <= MIN_MOLECULES) {
+                alert('至少保留 ' + MIN_MOLECULES + ' 个分子');
+                return;
+            }
+            nonPolarMolecules.pop();
+            polarMolecules.pop();
+            updateCount();
+            needsRedraw = true;
+            if (!isAnimating) render();
+        }
+
+        function resetSimulation() {
+            fieldValue = 60;
+            fieldSlider.value = 60;
+            fieldDisplay.textContent = '+60';
+            updateFieldLabel();
+
+            thermalStrength = 1.0;
+            thermalSlider.value = 1.0;
+            thermalDisplay.textContent = '1.0';
+            thermalValueEl.textContent = '中';
+
+            shiftScale = 1.0;
+            shiftSlider.value = 1.0;
+            shiftDisplay.textContent = '1.0';
+            stretchScale = 1.0;
+            stretchSlider.value = 1.0;
+            stretchDisplay.textContent = '1.0';
+            moleculeRadius = 8;
+            sizeSlider.value = 8;
+            sizeDisplay.textContent = '8';
+
+            generateMolecules(28);
+            updateCount();
+
+            time = 0;
+            applyThermalMotion();
+            needsRedraw = true;
+            if (!isAnimating) render();
+        }
+
+        const pauseBtn = document.getElementById('pauseBtn');
+        function toggleAnimation() {
+            isAnimating = !isAnimating;
+            pauseBtn.textContent = isAnimating ? '⏸ 暂停' : '▶ 继续';
+            if (isAnimating) {
+                animFrame = requestAnimationFrame(render);
+            } else {
+                if (animFrame) cancelAnimationFrame(animFrame);
+            }
+        }
+
+        // ================================================================
+        // 10. 初始化
+        // ================================================================
+        function resize() {
+            const rect = wrap.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            const halfWidth = rect.width / 2;
+            W = halfWidth;
+            H = rect.height;
+
+            [canvasNP, canvasP].forEach(canvas => {
+                canvas.width = W * dpr;
+                canvas.height = H * dpr;
+                canvas.style.width = W + 'px';
+                canvas.style.height = H + 'px';
+            });
+
+            ctxNP.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctxP.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+            CX = W / 2;
+            CY = H / 2;
+
+            if (nonPolarMolecules.length === 0) {
+                generateMolecules(28);
+                updateCount();
+            }
+            needsRedraw = true;
+        }
+
+        window.addEventListener('resize', () => {
+            resize();
+            needsRedraw = true;
+            if (!isAnimating) render();
+        });
+
+        // 启动
+        resize();
+        updateFieldLabel();
+        applyThermalMotion();
+        render();
+
+        console.log('⚡ 大量分子极化 + 热运动 | 无极(左) 有极(右)');
+    </script>
+</body>
+</html>

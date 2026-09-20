@@ -535,13 +535,13 @@
                     移动速度：<span class="hl" id="info-speed">1.0x</span>
                 </p>
                 <p>
-                    感应电场 <span class="efield">(静止时为零)</span>
+                    感应电场 <span class="efield">涡旋场 (环绕轴线)</span>
                 </p>
                 <p>
                     运动状态：<span class="paused" id="info-pause-state">▶ 运行中</span>
                 </p>
                 <p style="font-size:0.75rem; opacity:0.65;">
-                    ※ 箭头方向表示电场方向，颜色表示场强大小
+                    ※ 箭头方向表示涡旋电场方向，颜色表示场强大小
                 </p>
             </div>
 
@@ -567,7 +567,6 @@
                 ⚡ 电场 & 电磁感应
             </div>
 
-            <!-- 暂停/继续 按钮 -->
             <div class="section" style="padding:12px 14px;">
                 <button id="pauseBtn" class="btn-pause">
                     <span id="pauseIcon">⏸</span>
@@ -654,7 +653,8 @@
                     • <span style="color:#b0c8e0;">按住左键拖动</span> 移动磁铁<br>
                     • <span style="color:#b0c8e0;">按住右键拖动</span> 旋转视角<br>
                     • <span style="color:#b0c8e0;">鼠标滚轮</span> 缩放视图<br>
-                    • <span style="color:#b0c8e0;">键盘 ← →</span> 微调磁铁
+                    • <span style="color:#b0c8e0;">键盘 ← →</span> 微调磁铁<br>
+                    • <span style="color:#b0c8e0;">空格键</span> 暂停/继续
                 </p>
             </div>
 
@@ -667,6 +667,11 @@
                 <div class="legend-grid" style="margin-top:6px;">
                     <span class="legend-item" style="font-size:11px; color:#6a8aaa;">
                         ➡️ 电场矢量颜色：<span style="color:#00aaff;">弱</span> → <span style="color:#ffff00;">中</span> → <span style="color:#ff0000;">强</span>
+                    </span>
+                </div>
+                <div class="legend-grid" style="margin-top:4px;">
+                    <span class="legend-item" style="font-size:11px; color:#6a8aaa;">
+                        🔄 电场为涡旋场：环绕螺线管轴线
                     </span>
                 </div>
             </div>
@@ -1129,7 +1134,7 @@
         }
 
         // ============================================================
-        //  9. 感应电场矢量系统（可调密度，暂停时保留）
+        //  9. 感应电场矢量系统（涡旋场，方向已修正）
         // ============================================================
         const eFieldGroup = new THREE.Group();
         scene.add(eFieldGroup);
@@ -1177,6 +1182,10 @@
         }
 
         // density: 0=关闭, 1=低, 2=中, 3=高, 4=超高
+        // 物理模型：感应电场为涡旋场，环绕螺线管轴线
+        // - 无 z 轴分量（eFieldZ = 0）
+        // - 切向方向由楞次定律决定（vortexSign = -velSign）
+        // - 强度：内部 ∝ r，外部 ∝ 1/r
         function buildEFieldArrows(density, velocity) {
             releaseAllEArrows();
 
@@ -1205,6 +1214,9 @@
 
             const magnetZ = magnetGroup.position.z;
             const velSign = Math.sign(velocity);
+            // 楞次定律：感应电场方向阻碍磁通变化
+            // 磁铁向 +z 运动 → 电场顺时针环绕（从 +z 看）；反之逆时针
+            const vortexSign = -velSign;
 
             const tmpColor = new THREE.Color();
             const dirVec = new THREE.Vector3();
@@ -1224,21 +1236,37 @@
                         const zDist = z - magnetZ;
                         const rFromCoilAxis = Math.sqrt(x * x + y * y);
 
+                        // 基础强度衰减
                         const eMagBase = vFactor * 1.2 / (1 + rFromCoilAxis * 0.7) * (1 / (1 + Math.abs(zDist) * 0.6));
 
-                        const eFieldZ = velSign * eMagBase * 0.8;
-                        const eFieldX = -y * 0.35 * eMagBase;
-                        const eFieldY = x * 0.35 * eMagBase;
+                        // 切向单位向量 (逆时针): (-y/r, x/r)
+                        const rSafe = Math.max(rFromCoilAxis, 1e-6);
+                        const tangentX = -y / rSafe;
+                        const tangentY = x / rSafe;
 
-                        const eMag = Math.sqrt(eFieldX * eFieldX + eFieldY * eFieldY + eFieldZ * eFieldZ);
+                        // 涡旋电场强度：内部 ∝ r，外部 ∝ 1/r
+                        let eMagTangential;
+                        if (rFromCoilAxis < coilRadius) {
+                            eMagTangential = eMagBase * rFromCoilAxis * 0.9;
+                        } else {
+                            eMagTangential = eMagBase * coilRadius * coilRadius / rSafe * 0.9;
+                        }
+
+                        // 涡旋电场：只有切向分量，无 z 分量
+                        const eFieldX = vortexSign * tangentX * eMagTangential;
+                        const eFieldY = vortexSign * tangentY * eMagTangential;
+                        const eFieldZ = 0;
+
+                        const eMag = Math.sqrt(eFieldX * eFieldX + eFieldY * eFieldY);
                         if (eMag < 0.04) continue;
 
                         const arrowLen = Math.min(0.45, eMag * 0.9);
                         const invMag = 1 / eMag;
                         const dirX = eFieldX * invMag;
                         const dirY = eFieldY * invMag;
-                        const dirZ = eFieldZ * invMag;
+                        const dirZ = 0;
 
+                        // 颜色映射
                         if (eMag < 0.25) {
                             const t = eMag / 0.25;
                             tmpColor.setRGB(0, 0.6 + 0.4 * t, 1.0);
@@ -1396,7 +1424,6 @@
             } else {
                 eFieldGroup.visible = showEFieldCheckbox.checked;
                 if (showEFieldCheckbox.checked) {
-                    // 如果当前是暂停状态，需要按暂停时的速度重建电场
                     const vel = isPaused ? frozenVelocity : currentMagnetVelocity;
                     buildEFieldArrows(d, vel);
                 }
@@ -1450,8 +1477,8 @@
         //  12. 暂停/继续 控制
         // ============================================================
         let isPaused = false;
-        let frozenVelocity = 0;       // 暂停瞬间的速度（用于重建电场）
-        let frozenTargetZ = 0;        // 暂停瞬间的目标位置
+        let frozenVelocity = 0;
+        let frozenTargetZ = 0;
 
         const pauseBtn = document.getElementById('pauseBtn');
         const pauseIcon = document.getElementById('pauseIcon');
@@ -1476,18 +1503,14 @@
             isPaused = !isPaused;
 
             if (isPaused) {
-                // 暂停：冻结所有运动
-                frozenVelocity = smoothedVelocity;   // 保留暂停瞬间的速度（电场强度）
+                frozenVelocity = smoothedVelocity;
                 frozenTargetZ = magnetGroup.position.z;
                 targetMagnetZ = magnetGroup.position.z;
 
-                // 重建一次电场（保留当前场分布，不因暂停而清空）
                 if (showEFieldCheckbox.checked && currentEFieldDensity > 0) {
-                    // 用冻结的速度重建，确保电场保留
                     buildEFieldArrows(currentEFieldDensity, frozenVelocity);
                 }
             } else {
-                // 继续：恢复自动移动的基准位置
                 if (autoMove) {
                     autoPos = magnetGroup.position.z;
                     autoDir = autoPos < 0 ? 1 : -1;
@@ -1511,7 +1534,6 @@
 
         function onPointerDown(e) {
             if (e.button === 0) {
-                // 暂停状态下允许拖动（但仅移动磁铁，不会恢复运动）
                 isDragging = true;
                 lastX = e.clientX;
                 targetMagnetZ = magnetGroup.position.z;
@@ -1566,7 +1588,6 @@
                     else if (autoPos <= -AUTO_AMPLITUDE + 0.1) autoDir = 1;
                 }
             }
-            // 空格键快捷暂停/继续
             if (e.code === 'Space') {
                 e.preventDefault();
                 pauseBtn.click();
@@ -1626,14 +1647,11 @@
 
             // ---- 暂停时：冻结所有运动 ----
             if (isPaused) {
-                // 磁铁保持在当前位置（不做任何更新）
                 magnetGroup.position.z = frozenTargetZ;
                 targetMagnetZ = frozenTargetZ;
                 currentMagnetVelocity = frozenVelocity;
                 smoothedVelocity = frozenVelocity;
 
-                // 磁场线、电场箭头、表盘都保持原样
-                // 只更新渲染和相机控制
                 controls.update();
                 renderer.render(scene, camera);
                 return;
@@ -1690,7 +1708,6 @@
             document.getElementById('info-position').textContent = `z = ${magnetGroup.position.z.toFixed(2)}`;
             prevPhi = phi;
 
-            // 电场更新（密度为0或未勾选时跳过）
             if (showEFieldCheckbox.checked && currentEFieldDensity > 0) {
                 eFieldFrameSkip++;
                 const velocityChanged = Math.abs(smoothedVelocity - lastEFieldVelocity) > 0.05;
@@ -1774,7 +1791,7 @@
 
         animate();
 
-        console.log('%c⚡ 法拉第电磁感应 · 暂停功能已添加（暂停时保留场）',
+        console.log('%c⚡ 法拉第电磁感应 · 涡旋电场方向已修正',
             'color:#ffaa00; font-weight:bold; font-size:14px;');
 
     } catch (err) {

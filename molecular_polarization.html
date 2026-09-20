@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>大量分子极化 · 无极 vs 有极 · 热运动 + 可调电场</title>
+    <title>大量分子极化 · 无极 vs 有极 · 热运动随机游走</title>
     <style>
         :root {
             --ahnu-blue: #003d7a;
@@ -372,7 +372,7 @@
 <body>
 
     <header class="header">
-        <h1>⚡ 大量分子极化 · 无极 vs 有极 · 热运动</h1>
+        <h1>⚡ 大量分子极化 · 无极 vs 有极 · 热运动随机游走</h1>
         <a class="back" href="index.html">← 返回实验大厅</a>
     </header>
 
@@ -416,7 +416,7 @@
                     <input type="range" id="thermalSlider" min="0" max="3.0" step="0.1" value="1.0" />
                 </div>
                 <div style="font-size:11px; color:#6a8aaa; background:rgba(0,0,0,0.2); border-radius:8px; padding:6px 10px; margin-top:6px; border-left:2px solid rgba(255,120,80,0.3);">
-                    🔥 热运动使分子位置抖动、偶极矩方向随机偏转
+                    🔥 分子做随机游走（布朗运动），有极分子取向缓慢偏转
                 </div>
             </div>
 
@@ -487,7 +487,7 @@
                 </div>
                 <div class="legend-grid" style="margin-top:6px;">
                     <span class="legend-item"><span class="legend-line" style="background:linear-gradient(90deg,#1a4a7a,#40b0a0,#d0b030,#d06040);"></span> 电场方向</span>
-                    <span class="legend-item"><span class="legend-line" style="background:rgba(255,120,80,0.6);"></span> 热运动抖动</span>
+                    <span class="legend-item"><span class="legend-line" style="background:rgba(255,120,80,0.6);"></span> 热运动随机游走</span>
                 </div>
             </div>
         </div>
@@ -523,15 +523,12 @@
         let animFrame = null;
         let needsRedraw = true;
 
-        // 时间（用于热运动相位）
-        let time = 0;
-
         // ================================================================
         // 2. 分子数据
         // ================================================================
-        // 无极分子：位置 + 热运动相位偏移
+        // 无极分子：位置 + 速度（随机游走）
         let nonPolarMolecules = [];
-        // 有极分子：位置 + 初始角度 + 热运动相位偏移
+        // 有极分子：位置 + 速度 + 初始角度 + 热运动角速度（缓慢变化）
         let polarMolecules = [];
 
         function seededRandom(seed) {
@@ -547,72 +544,98 @@
                 // 无极分子
                 const x1 = margin + seededRandom(i * 7 + 2) * (W - 2 * margin);
                 const y1 = margin + seededRandom(i * 13 + 5) * (H - 2 * margin);
+                const vAngle1 = seededRandom(i * 41 + 17) * Math.PI * 2;
                 nonPolarMolecules.push({
                     id: i + 1,
                     x: x1, y: y1,
-                    baseX: x1, baseY: y1,
-                    phase: seededRandom(i * 31 + 13) * Math.PI * 2
+                    vx: Math.cos(vAngle1),
+                    vy: Math.sin(vAngle1)
                 });
 
                 // 有极分子
                 const x2 = margin + seededRandom(i * 11 + 3) * (W - 2 * margin);
                 const y2 = margin + seededRandom(i * 17 + 7) * (H - 2 * margin);
                 const initAngle = seededRandom(i * 23 + 9) * Math.PI * 2;
+                const vAngle2 = seededRandom(i * 43 + 19) * Math.PI * 2;
                 polarMolecules.push({
                     id: i + 1,
                     x: x2, y: y2,
-                    baseX: x2, baseY: y2,
                     initAngle: initAngle,
-                    phase: seededRandom(i * 37 + 11) * Math.PI * 2
+                    vx: Math.cos(vAngle2),
+                    vy: Math.sin(vAngle2),
+                    // 热运动角度：当前角度偏移量
+                    thermalAngle: 0,
+                    // 热运动角速度：缓慢随机变化
+                    thermalOmega: (seededRandom(i * 53 + 23) - 0.5) * 0.02
                 });
             }
         }
 
         // ================================================================
-        // 3. 热运动更新
+        // 3. 热运动更新（随机游走 + 角度缓慢漂移）
         // ================================================================
-        // 热运动：位置抖动 + 角度随机偏转
-        // 使用多个正弦波叠加，模拟不规则运动
         function applyThermalMotion() {
-            const thermalAmp = thermalStrength * 6; // 位置抖动幅度(像素)
+            if (thermalStrength < 0.01) return;
 
+            const speed = thermalStrength * 0.8;
+            const noise = thermalStrength * 0.35;
+            const margin = 25;
+
+            // 无极分子：位置随机游走
             nonPolarMolecules.forEach((mol) => {
-                // 位置抖动：两个不同频率的正弦波叠加，产生不规则感
-                const t = time + mol.phase;
-                const dx = Math.sin(t * 1.3) * thermalAmp * 0.6
-                         + Math.sin(t * 2.7 + 1.2) * thermalAmp * 0.4;
-                const dy = Math.cos(t * 1.7 + 0.5) * thermalAmp * 0.6
-                         + Math.cos(t * 3.1 + 2.3) * thermalAmp * 0.4;
+                const angle = Math.atan2(mol.vy, mol.vx);
+                const newAngle = angle + (Math.random() - 0.5) * noise;
+                mol.vx = Math.cos(newAngle);
+                mol.vy = Math.sin(newAngle);
 
-                mol.x = mol.baseX + dx;
-                mol.y = mol.baseY + dy;
+                mol.x += mol.vx * speed;
+                mol.y += mol.vy * speed;
 
-                // 边界约束
-                const margin = 30;
-                mol.x = clamp(mol.x, margin, W - margin);
-                mol.y = clamp(mol.y, margin, H - margin);
+                if (mol.x < margin) { mol.x = margin; mol.vx = Math.abs(mol.vx); }
+                if (mol.x > W - margin) { mol.x = W - margin; mol.vx = -Math.abs(mol.vx); }
+                if (mol.y < margin) { mol.y = margin; mol.vy = Math.abs(mol.vy); }
+                if (mol.y > H - margin) { mol.y = H - margin; mol.vy = -Math.abs(mol.vy); }
             });
 
+            // 有极分子：位置随机游走 + 角度缓慢漂移
             polarMolecules.forEach((mol) => {
-                const t = time + mol.phase;
-                const dx = Math.sin(t * 1.5 + 0.3) * thermalAmp * 0.6
-                         + Math.sin(t * 2.9 + 1.8) * thermalAmp * 0.4;
-                const dy = Math.cos(t * 1.9 + 0.8) * thermalAmp * 0.6
-                         + Math.cos(t * 3.3 + 2.1) * thermalAmp * 0.4;
+                // 位置更新
+                const angle = Math.atan2(mol.vy, mol.vx);
+                const newAngle = angle + (Math.random() - 0.5) * noise;
+                mol.vx = Math.cos(newAngle);
+                mol.vy = Math.sin(newAngle);
 
-                mol.x = mol.baseX + dx;
-                mol.y = mol.baseY + dy;
+                mol.x += mol.vx * speed;
+                mol.y += mol.vy * speed;
 
-                const margin = 30;
-                mol.x = clamp(mol.x, margin, W - margin);
-                mol.y = clamp(mol.y, margin, H - margin);
+                if (mol.x < margin) { mol.x = margin; mol.vx = Math.abs(mol.vx); }
+                if (mol.x > W - margin) { mol.x = W - margin; mol.vx = -Math.abs(mol.vx); }
+                if (mol.y < margin) { mol.y = margin; mol.vy = Math.abs(mol.vy); }
+                if (mol.y > H - margin) { mol.y = H - margin; mol.vy = -Math.abs(mol.vy); }
 
-                // 角度热扰动：在最终取向角上叠加随机偏转
-                // 电场越强，偏转越小（取向更稳定）
+                // 角度热运动：角速度缓慢随机变化，角度本身按角速度累积
+                // 电场强度越高，角速度越小（取向更稳定）
                 const fieldStrength = Math.abs(fieldValue) / 100;
-                const angleNoise = thermalStrength * (1 - fieldStrength * 0.7) * 0.8;
-                mol.thermalAngle = Math.sin(t * 2.1 + 0.4) * angleNoise
-                                 + Math.cos(t * 3.7 + 1.6) * angleNoise * 0.5;
+                const stability = 1 - fieldStrength * 0.8; // 0.2 ~ 1
+                const omegaNoise = (Math.random() - 0.5) * thermalStrength * 0.004 * stability;
+                mol.thermalOmega += omegaNoise;
+                // 限制角速度范围
+                const maxOmega = thermalStrength * 0.03 * stability;
+                mol.thermalOmega = clamp(mol.thermalOmega, -maxOmega, maxOmega);
+
+                // 角度累积（缓慢漂移）
+                mol.thermalAngle += mol.thermalOmega;
+
+                // 限制角度范围，防止无限累积（软边界：靠近边界时反向）
+                const maxAngle = thermalStrength * 0.6 * stability;
+                if (mol.thermalAngle > maxAngle) {
+                    mol.thermalAngle = maxAngle;
+                    mol.thermalOmega = -Math.abs(mol.thermalOmega) * 0.5;
+                }
+                if (mol.thermalAngle < -maxAngle) {
+                    mol.thermalAngle = -maxAngle;
+                    mol.thermalOmega = Math.abs(mol.thermalOmega) * 0.5;
+                }
             });
         }
 
@@ -777,7 +800,7 @@
         }
 
         // ================================================================
-        // 6. 绘制无极分子（叠加热运动）
+        // 6. 绘制无极分子
         // ================================================================
         function drawNonPolarMolecules(ctx, fieldVal) {
             const absField = Math.abs(fieldVal);
@@ -786,34 +809,19 @@
             const shift = strength * maxShift;
             const offset = fieldVal > 0 ? shift : -shift;
 
-            // 热运动带来的电荷中心随机涨落
-            const thermalJitter = thermalStrength * 1.5;
-
             nonPolarMolecules.forEach((mol) => {
-                const { x: cx, y: cy, phase } = mol;
-
-                // 基础位移（电场诱导）
-                const basePosX = cx + offset;
-                const baseNegX = cx - offset;
-
-                // 热运动涨落：正负电荷中心各自微小的随机偏移
-                const t = time + phase;
-                const jitterPos = Math.sin(t * 4.1 + 1.3) * thermalJitter;
-                const jitterNeg = Math.cos(t * 3.7 + 2.1) * thermalJitter;
-
-                const posX = basePosX + jitterPos;
-                const negX = baseNegX + jitterNeg;
-                const posY = cy + Math.sin(t * 2.3 + 0.7) * thermalJitter * 0.5;
-                const negY = cy + Math.cos(t * 2.9 + 1.8) * thermalJitter * 0.5;
+                const { x: cx, y: cy } = mol;
+                const posX = cx + offset;
+                const negX = cx - offset;
 
                 // 虚线连接
-                if (Math.abs(offset) > 0.5 || thermalJitter > 0.5) {
+                if (Math.abs(offset) > 0.5) {
                     ctx.beginPath();
                     ctx.strokeStyle = 'rgba(107, 138, 168, 0.6)';
                     ctx.lineWidth = 1.3;
                     ctx.setLineDash([3, 4]);
-                    ctx.moveTo(negX, negY);
-                    ctx.lineTo(posX, posY);
+                    ctx.moveTo(negX, cy);
+                    ctx.lineTo(posX, cy);
                     ctx.stroke();
                     ctx.setLineDash([]);
                 }
@@ -823,7 +831,7 @@
                 ctx.shadowBlur = 8 + strength * 12;
                 ctx.beginPath();
                 ctx.fillStyle = '#ff7b72';
-                ctx.arc(posX, posY, moleculeRadius, 0, Math.PI * 2);
+                ctx.arc(posX, cy, moleculeRadius, 0, Math.PI * 2);
                 ctx.fill();
 
                 // 负电荷
@@ -831,7 +839,7 @@
                 ctx.shadowBlur = 8 + strength * 12;
                 ctx.beginPath();
                 ctx.fillStyle = '#4faaff';
-                ctx.arc(negX, negY, moleculeRadius, 0, Math.PI * 2);
+                ctx.arc(negX, cy, moleculeRadius, 0, Math.PI * 2);
                 ctx.fill();
 
                 // 符号
@@ -841,8 +849,8 @@
                 ctx.fillStyle = '#ffffff';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText('+', posX, posY - 1);
-                ctx.fillText('−', negX, negY - 1);
+                ctx.fillText('+', posX, cy - 1);
+                ctx.fillText('−', negX, cy - 1);
 
                 ctx.textAlign = 'left';
                 ctx.textBaseline = 'alphabetic';
@@ -850,7 +858,7 @@
         }
 
         // ================================================================
-        // 7. 绘制有极分子（叠加热运动）
+        // 7. 绘制有极分子
         // ================================================================
         function drawPolarMolecules(ctx, fieldVal) {
             const absField = Math.abs(fieldVal);
@@ -865,7 +873,7 @@
             polarMolecules.forEach((mol) => {
                 const { x: cx, y: cy, initAngle, thermalAngle = 0 } = mol;
 
-                // 基础取向：初始角度与电场方向的混合
+                // 基础取向
                 const initVecX = Math.cos(initAngle);
                 const initVecY = Math.sin(initAngle);
                 const targetVecX = Math.cos(targetAngle);
@@ -884,7 +892,7 @@
                     baseAngle = Math.atan2(mixY, mixX);
                 }
 
-                // 叠加角度热扰动
+                // 叠加缓慢漂移的热运动角度
                 const finalAngle = baseAngle + thermalAngle;
 
                 const half = bondLength / 2;
@@ -938,19 +946,16 @@
         function render() {
             if (!needsRedraw && !isAnimating) return;
 
-            // 更新时间
             if (isAnimating) {
-                time += 0.015;
-                // 每帧都应用热运动并重绘
                 applyThermalMotion();
             }
 
-            // 绘制无极分子画布
+            // 无极分子画布
             ctxNP.clearRect(0, 0, W, H);
             drawFieldBackground(ctxNP, fieldValue);
             drawNonPolarMolecules(ctxNP, fieldValue);
 
-            // 绘制有极分子画布
+            // 有极分子画布
             ctxP.clearRect(0, 0, W, H);
             drawFieldBackground(ctxP, fieldValue);
             drawPolarMolecules(ctxP, fieldValue);
@@ -1013,7 +1018,6 @@
             }
         }
 
-        // 热运动滑块
         const thermalSlider = document.getElementById('thermalSlider');
         const thermalDisplay = document.getElementById('thermalDisplay');
         const thermalValueEl = document.getElementById('thermalValue');
@@ -1031,7 +1035,6 @@
             if (!isAnimating) render();
         });
 
-        // 视觉参数
         const shiftSlider = document.getElementById('shiftSlider');
         const shiftDisplay = document.getElementById('shiftDisplay');
         shiftSlider.addEventListener('input', (e) => {
@@ -1059,7 +1062,6 @@
             if (!isAnimating) render();
         });
 
-        // 分子数量
         const particleCountEl = document.getElementById('particleCount');
 
         function updateCount() {
@@ -1076,23 +1078,25 @@
             const margin = 60;
             const newX = margin + Math.random() * (W - 2 * margin);
             const newY = margin + Math.random() * (H - 2 * margin);
-            const phase = Math.random() * Math.PI * 2;
+            const vAngle1 = Math.random() * Math.PI * 2;
             nonPolarMolecules.push({
                 id, x: newX, y: newY,
-                baseX: newX, baseY: newY,
-                phase: phase
+                vx: Math.cos(vAngle1),
+                vy: Math.sin(vAngle1)
             });
 
             const newX2 = margin + Math.random() * (W - 2 * margin);
             const newY2 = margin + Math.random() * (H - 2 * margin);
             const initAngle = Math.random() * Math.PI * 2;
+            const vAngle2 = Math.random() * Math.PI * 2;
             polarMolecules.push({
                 id,
                 x: newX2, y: newY2,
-                baseX: newX2, baseY: newY2,
                 initAngle: initAngle,
-                phase: Math.random() * Math.PI * 2,
-                thermalAngle: 0
+                vx: Math.cos(vAngle2),
+                vy: Math.sin(vAngle2),
+                thermalAngle: 0,
+                thermalOmega: (Math.random() - 0.5) * 0.02
             });
 
             updateCount();
@@ -1136,8 +1140,6 @@
             generateMolecules(28);
             updateCount();
 
-            time = 0;
-            applyThermalMotion();
             needsRedraw = true;
             if (!isAnimating) render();
         }
@@ -1189,13 +1191,11 @@
             if (!isAnimating) render();
         });
 
-        // 启动
         resize();
         updateFieldLabel();
-        applyThermalMotion();
         render();
 
-        console.log('⚡ 大量分子极化 + 热运动 | 无极(左) 有极(右)');
+        console.log('⚡ 大量分子极化 + 热运动随机游走（有极分子角度缓慢漂移）');
     </script>
 </body>
 </html>

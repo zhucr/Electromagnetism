@@ -2,34 +2,38 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>运动电荷的电磁场 — 空间固定矢量场</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>运动电荷的电磁场 — 空间固定矢量场 (移动优化)</title>
     <style>
         :root {
             --ahnu-blue: #003d7a;
             --ahnu-gold: #c9a227;
+            --panel-width: 310px;
         }
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
         body {
             font-family: 'Segoe UI', 'PingFang SC', Roboto, system-ui, -apple-system, sans-serif;
             background: #0b1219;
             color: #e8edf3;
             height: 100vh;
+            height: 100dvh;
             overflow: hidden;
             display: flex;
             flex-direction: column;
+            user-select: none;
         }
         .header {
             background: linear-gradient(90deg, var(--ahnu-blue) 0%, #0056a3 100%);
             color: white;
-            padding: 0 40px;
+            padding: 0 16px;
             display: flex;
             align-items: center;
-            height: 64px;
+            height: 56px;
             box-shadow: 0 4px 20px rgba(0, 61, 122, 0.25);
             position: sticky;
             top: 0;
@@ -37,9 +41,13 @@
             flex-shrink: 0;
         }
         .header h1 {
-            font-size: 18px;
+            font-size: 15px;
             font-weight: 700;
-            letter-spacing: 2px;
+            letter-spacing: 1px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 55vw;
         }
         .header .back {
             margin-left: auto;
@@ -49,12 +57,36 @@
             opacity: 0.85;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
             transition: opacity 0.2s;
+            white-space: nowrap;
+            padding: 8px 0 8px 12px;
         }
         .header .back:hover {
             opacity: 1;
         }
+
+        /* 移动端菜单按钮（仅小屏显示） */
+        .menu-toggle {
+            display: none;
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            color: white;
+            font-size: 22px;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            margin-left: 12px;
+            transition: background 0.2s;
+            flex-shrink: 0;
+        }
+        .menu-toggle:active {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
         #app {
             display: flex;
             flex: 1;
@@ -62,12 +94,14 @@
             background: rgba(18, 28, 40, 0.75);
             backdrop-filter: blur(6px);
             overflow: hidden;
+            position: relative;
         }
         #canvas-wrap {
             flex: 1;
             position: relative;
             background: #0a0f16;
             overflow: hidden;
+            min-height: 0;
         }
         #canvas-wrap canvas {
             display: block;
@@ -87,29 +121,33 @@
         }
         #info {
             position: absolute;
-            top: 16px;
-            left: 16px;
+            top: 12px;
+            left: 12px;
             background: rgba(10, 18, 28, 0.82);
             color: #e8edf3;
-            padding: 14px 20px;
+            padding: 12px 16px;
             border-radius: 12px;
             pointer-events: none;
             z-index: 50;
             backdrop-filter: blur(8px);
             border: 1px solid rgba(255,255,255,0.06);
             box-shadow: 0 6px 20px rgba(0,0,0,0.5);
-            max-width: 360px;
+            max-width: 260px;
         }
         #info h1 {
-            margin: 0 0 6px;
-            font-size: 1.1rem;
+            margin: 0 0 4px;
+            font-size: 1rem;
             letter-spacing: 0.5px;
             color: #b0d0ff;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
         }
         #info p {
-            margin: 4px 0;
-            font-size: 0.82rem;
-            line-height: 1.45;
+            margin: 3px 0;
+            font-size: 0.76rem;
+            line-height: 1.4;
             opacity: 0.85;
             color: #a0b8d0;
         }
@@ -119,58 +157,65 @@
         #info .pos      { color: #88ff88; font-weight: 600; font-variant-numeric: tabular-nums; }
         #info .approx-badge {
             display: inline-block;
-            font-size: 10px;
-            padding: 1px 8px;
+            font-size: 9px;
+            padding: 1px 6px;
             border-radius: 8px;
             background: rgba(255, 170, 0, 0.15);
             color: #ffaa00;
             border: 1px solid rgba(255, 170, 0, 0.3);
-            margin-left: 6px;
             font-weight: 600;
         }
 
         #speed-indicator {
             position: absolute;
-            bottom: 24px;
+            bottom: 18px;
             left: 50%;
             transform: translateX(-50%);
             color: #f0c060;
-            font-size: 0.95rem;
+            font-size: 0.85rem;
             font-weight: 700;
-            letter-spacing: 1.2px;
+            letter-spacing: 1px;
             text-shadow: 0 0 12px rgba(240,192,96,0.5);
             background: rgba(0,0,0,0.6);
-            padding: 6px 24px;
-            border-radius: 24px;
+            padding: 5px 18px;
+            border-radius: 20px;
             border: 1px solid rgba(240,192,96,0.3);
             z-index: 50;
             white-space: nowrap;
             font-variant-numeric: tabular-nums;
             transition: color 0.25s;
             pointer-events: none;
+            backdrop-filter: blur(4px);
         }
 
+        /* 控制面板 - 移动端默认隐藏 */
         #panel {
-            width: 310px;
-            min-width: 310px;
-            padding: 22px 20px 26px;
-            background: rgba(12, 20, 30, 0.85);
-            backdrop-filter: blur(12px);
+            width: var(--panel-width);
+            min-width: var(--panel-width);
+            padding: 18px 16px 24px;
+            background: rgba(12, 20, 30, 0.92);
+            backdrop-filter: blur(16px);
             border-left: 1px solid rgba(255, 255, 255, 0.05);
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 14px;
+            gap: 12px;
+            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                        opacity 0.3s ease,
+                        visibility 0.3s;
+            z-index: 200;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
         }
         #panel::-webkit-scrollbar {
-            width: 4px;
+            width: 3px;
         }
         #panel::-webkit-scrollbar-thumb {
             background: rgba(255, 255, 255, 0.15);
             border-radius: 8px;
         }
         .panel-title {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 600;
             letter-spacing: 0.5px;
             background: linear-gradient(135deg, #b0d0ff, #7a9eff);
@@ -182,10 +227,27 @@
             align-items: center;
             justify-content: space-between;
         }
+        .panel-close {
+            display: none;
+            background: rgba(255, 255, 255, 0.08);
+            border: none;
+            color: #b0c8e0;
+            font-size: 20px;
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .panel-close:active {
+            background: rgba(255, 255, 255, 0.2);
+        }
         .section {
             background: rgba(255, 255, 255, 0.03);
-            border-radius: 14px;
-            padding: 14px 16px;
+            border-radius: 12px;
+            padding: 12px 14px;
             border: 1px solid rgba(255, 255, 255, 0.04);
             transition: border-color 0.2s;
         }
@@ -193,10 +255,10 @@
             border-color: rgba(255, 255, 255, 0.08);
         }
         .section-label {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 500;
             color: #9ab0cc;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             display: flex;
             align-items: center;
             gap: 8px;
@@ -204,22 +266,22 @@
         .section-label .badge {
             font-size: 10px;
             background: rgba(255, 255, 255, 0.06);
-            padding: 0 10px;
+            padding: 0 8px;
             border-radius: 12px;
             color: #6a8aaa;
         }
         .btn-group {
             display: flex;
-            gap: 8px;
+            gap: 6px;
             flex-wrap: wrap;
         }
         .btn {
             flex: 1;
-            min-width: 60px;
-            padding: 8px 12px;
+            min-width: 55px;
+            padding: 8px 10px;
             border: none;
             border-radius: 10px;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 500;
             color: #e8edf3;
             background: rgba(255, 255, 255, 0.06);
@@ -229,6 +291,7 @@
             letter-spacing: 0.3px;
             border: 1px solid transparent;
             user-select: none;
+            touch-action: manipulation;
         }
         .btn:hover {
             background: rgba(255, 255, 255, 0.12);
@@ -257,10 +320,10 @@
             box-shadow: 0 0 16px rgba(60, 140, 255, 0.15);
         }
         .slider-group {
-            margin-top: 6px;
+            margin-top: 4px;
         }
         .slider-group label {
-            font-size: 12px;
+            font-size: 11px;
             color: #7a90aa;
             display: flex;
             justify-content: space-between;
@@ -273,17 +336,18 @@
             -webkit-appearance: none;
             appearance: none;
             width: 100%;
-            height: 4px;
+            height: 6px;
             border-radius: 4px;
             background: rgba(255, 255, 255, 0.10);
             outline: none;
-            margin: 6px 0 4px;
+            margin: 8px 0 4px;
+            touch-action: pan-y;
         }
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
-            width: 16px;
-            height: 16px;
+            width: 20px;
+            height: 20px;
             border-radius: 50%;
             background: linear-gradient(135deg, #5a8ad0, #3a6aaa);
             cursor: pointer;
@@ -295,8 +359,8 @@
             transform: scale(1.1);
         }
         input[type="range"]::-moz-range-thumb {
-            width: 16px;
-            height: 16px;
+            width: 20px;
+            height: 20px;
             border-radius: 50%;
             background: linear-gradient(135deg, #5a8ad0, #3a6aaa);
             cursor: pointer;
@@ -305,33 +369,31 @@
         .legend-grid {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px 16px;
-            margin-top: 4px;
+            gap: 6px 12px;
+            margin-top: 2px;
         }
         .legend-item {
             display: flex;
             align-items: center;
             gap: 6px;
-            font-size: 12px;
+            font-size: 11px;
             color: #9ab0cc;
         }
         .legend-gradient {
-            width: 80px;
-            height: 10px;
+            width: 70px;
+            height: 8px;
             border-radius: 5px;
             flex-shrink: 0;
         }
-        /* 电场暖色渐变：黄 → 橙 → 红 */
         .legend-gradient.electric {
             background: linear-gradient(to right, #ffdd00 0%, #ff8800 50%, #ff0000 100%);
         }
-        /* 磁场冷色渐变：青 → 蓝 → 紫 */
         .legend-gradient.magnetic {
             background: linear-gradient(to right, #00ccff 0%, #4a4aff 50%, #aa00ff 100%);
         }
         .legend-dot {
-            width: 14px;
-            height: 14px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
             flex-shrink: 0;
             border: 1px solid rgba(255, 255, 255, 0.06);
@@ -343,23 +405,23 @@
             padding: 2px 0;
         }
         .switch-label {
-            font-size: 13px;
+            font-size: 12px;
             color: #9ab0cc;
             display: flex;
             align-items: center;
             gap: 8px;
         }
         .switch-label .hint {
-            font-size: 10px;
+            font-size: 9px;
             color: #6a80a0;
             background: rgba(255,255,255,0.04);
-            padding: 1px 8px;
+            padding: 1px 6px;
             border-radius: 8px;
         }
         .toggle-switch {
             position: relative;
-            width: 40px;
-            height: 22px;
+            width: 42px;
+            height: 24px;
             flex-shrink: 0;
             cursor: pointer;
         }
@@ -372,15 +434,15 @@
             position: absolute;
             inset: 0;
             background: rgba(255,255,255,0.12);
-            border-radius: 22px;
+            border-radius: 24px;
             transition: 0.25s;
             border: 1px solid rgba(255,255,255,0.08);
         }
         .toggle-slider::before {
             content: "";
             position: absolute;
-            height: 16px;
-            width: 16px;
+            height: 18px;
+            width: 18px;
             left: 2px;
             bottom: 2px;
             background: #8aaac8;
@@ -396,41 +458,109 @@
             transform: translateX(18px);
             background: #fff;
         }
+
+        /* 移动端遮罩 */
+        .panel-overlay {
+            display: none;
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 150;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        /* 平板及以下 */
         @media (max-width: 900px) {
-            #app {
-                flex-direction: column;
-                height: auto;
-                width: 100vw;
-                backdrop-filter: none;
+            :root {
+                --panel-width: 300px;
             }
             #panel {
-                width: 100%;
-                min-width: unset;
-                max-height: 45vh;
-                border-left: none;
-                border-top: 1px solid rgba(255, 255, 255, 0.05);
-                padding: 16px;
+                position: absolute;
+                right: 0;
+                top: 0;
+                bottom: 0;
+                width: var(--panel-width);
+                min-width: var(--panel-width);
+                transform: translateX(100%);
+                opacity: 0;
+                visibility: hidden;
+                border-radius: 16px 0 0 16px;
+                box-shadow: -10px 0 40px rgba(0, 0, 0, 0.6);
+                background: rgba(12, 20, 30, 0.97);
+            }
+            #panel.open {
+                transform: translateX(0);
+                opacity: 1;
+                visibility: visible;
+            }
+            .menu-toggle {
+                display: flex;
+            }
+            .panel-close {
+                display: flex;
+            }
+            .panel-overlay.active {
+                display: block;
+                opacity: 1;
+                pointer-events: auto;
             }
             #canvas-wrap {
-                height: 55vh;
+                height: 100%;
             }
         }
+
+        /* 小屏手机 */
         @media (max-width: 500px) {
+            .header {
+                height: 50px;
+                padding: 0 10px;
+            }
+            .header h1 {
+                font-size: 13px;
+                max-width: 45vw;
+            }
+            .menu-toggle {
+                width: 36px;
+                height: 36px;
+                font-size: 20px;
+                margin-left: 8px;
+            }
             #panel {
-                padding: 12px;
+                width: 280px;
+                min-width: 280px;
+                padding: 14px 12px 20px;
                 gap: 10px;
             }
             .section {
                 padding: 10px 12px;
+                border-radius: 10px;
             }
             .btn {
-                font-size: 12px;
-                padding: 6px 10px;
-                min-width: 50px;
+                font-size: 11px;
+                padding: 7px 8px;
+                min-width: 45px;
             }
             #info {
-                max-width: 240px;
-                padding: 10px 14px;
+                max-width: 200px;
+                padding: 10px 12px;
+                top: 8px;
+                left: 8px;
+            }
+            #info h1 {
+                font-size: 0.85rem;
+            }
+            #info p {
+                font-size: 0.7rem;
+            }
+            #speed-indicator {
+                font-size: 0.75rem;
+                padding: 4px 14px;
+                bottom: 12px;
+            }
+            .panel-title {
+                font-size: 15px;
             }
         }
     </style>
@@ -438,8 +568,9 @@
 <body>
 
     <header class="header">
-        <h1>⚡ 运动电荷的电磁场 — 空间固定矢量场</h1>
-        <a class="back" href="index.html">← 返回实验大厅</a>
+        <h1>⚡ 运动电荷的电磁场</h1>
+        <a class="back" href="index.html">← 返回</a>
+        <button class="menu-toggle" id="menuToggle" aria-label="打开控制面板">☰</button>
     </header>
 
     <div id="app">
@@ -452,16 +583,29 @@
                 <p>
                     电场 <span class="e-color">E</span>　|　磁场 <span class="b-color">B</span>
                 </p>
+                <p>
+                    运动方向：<span class="hl">+X 轴</span>　|　速度：<span class="hl" id="info-speed">0.30c</span>
+                </p>
+                <p>
+                    电荷位置：<span class="pos" id="info-position">x = 0.00</span>
+                </p>
+                <p style="font-size:0.7rem; opacity:0.65;">
+                    ※ 矢量箭头固定在空间各点
+                </p>
             </div>
 
             <!-- 速度状态 -->
             <div id="speed-indicator">⚡ v = 0.30c ⚡</div>
         </div>
 
+        <!-- 遮罩（移动端） -->
+        <div class="panel-overlay" id="panelOverlay"></div>
+
         <!-- 右侧控制面板 -->
         <div id="panel">
             <div class="panel-title">
                 ⚡ 运动电荷电磁场
+                <button class="panel-close" id="panelClose" aria-label="关闭控制面板">✕</button>
             </div>
 
             <!-- 仿真控制 -->
@@ -502,11 +646,11 @@
             <div class="section">
                 <div class="section-label">👁️ 显示控制</div>
                 <div class="btn-group" style="gap:8px;">
-                    <label style="flex:1; display:flex; align-items:center; gap:6px; font-size:13px; color:#9ab0cc; cursor:pointer;">
-                        <input type="checkbox" id="showElectric" checked style="accent-color:#ff5555; width:15px; height:15px;"> 电场
+                    <label style="flex:1; display:flex; align-items:center; gap:6px; font-size:12px; color:#9ab0cc; cursor:pointer;">
+                        <input type="checkbox" id="showElectric" checked style="accent-color:#ff5555; width:16px; height:16px;"> 电场
                     </label>
-                    <label style="flex:1; display:flex; align-items:center; gap:6px; font-size:13px; color:#9ab0cc; cursor:pointer;">
-                        <input type="checkbox" id="showMagnetic" checked style="accent-color:#55aaff; width:15px; height:15px;"> 磁场
+                    <label style="flex:1; display:flex; align-items:center; gap:6px; font-size:12px; color:#9ab0cc; cursor:pointer;">
+                        <input type="checkbox" id="showMagnetic" checked style="accent-color:#55aaff; width:16px; height:16px;"> 磁场
                     </label>
                 </div>
             </div>
@@ -547,25 +691,25 @@
                 </div>
             </div>
 
-            <!-- 图例：已修改为暖色/冷色映射 -->
+            <!-- 图例 -->
             <div class="section" style="border-color:rgba(255,255,255,0.03);">
                 <div class="section-label" style="margin-bottom:4px;">🎨 图例</div>
                 <div class="legend-grid">
                     <span class="legend-item"><span class="legend-dot" style="background:#ff5a5a;"></span> 电场 E</span>
                     <span class="legend-item"><span class="legend-dot" style="background:#4a8aff;"></span> 磁场 B</span>
                 </div>
-                <div class="legend-grid" style="margin-top:6px;">
+                <div class="legend-grid" style="margin-top:4px;">
                     <span class="legend-item">
                         <span class="legend-gradient electric"></span> 电场 |E|（暖色） 弱 → 强
                     </span>
                 </div>
-                <div class="legend-grid" style="margin-top:6px;">
+                <div class="legend-grid" style="margin-top:4px;">
                     <span class="legend-item">
                         <span class="legend-gradient magnetic"></span> 磁场 |H|（冷色） 弱 → 强
                     </span>
                 </div>
-                <div class="legend-grid" style="margin-top:6px;">
-                    <span class="legend-item" style="font-size:11px; color:#6a8aaa;">
+                <div class="legend-grid" style="margin-top:4px;">
+                    <span class="legend-item" style="font-size:10px; color:#6a8aaa;">
                         ➡️ 矢量箭头长度 ∝ 场强，颜色表示强度
                     </span>
                 </div>
@@ -616,6 +760,7 @@
     controls.maxPolarAngle = Math.PI * 0.98;
     controls.minDistance = 3;
     controls.maxDistance = 50;
+    controls.enablePan = true;
 
     // ============================================================
     //  2. 光照
@@ -634,7 +779,7 @@
     //  3. 背景星空
     // ============================================================
     (function createStars() {
-        const count = 2500;
+        const count = 2000;
         const positions = new Float32Array(count * 3);
         const colors = new Float32Array(count * 3);
         for (let i = 0; i < count; i++) {
@@ -762,49 +907,43 @@
     const RESET_X = 0.0;
 
     // ============================================================
-    //  6. 颜色映射函数（已按要求修改：电场暖色、磁场冷色）
+    //  6. 颜色映射函数
     // ============================================================
     const _colorCache = new THREE.Color();
 
-    // 电场暖色映射：t=0 → 黄 (#ffdd00)，t=0.5 → 橙 (#ff8800)，t=1 → 红 (#ff0000)
     function getElectricColor(t) {
         t = Math.max(0, Math.min(1, t));
         let r, g, b;
         if (t < 0.5) {
             const s = t / 0.5;
-            r = 1.0;                      // 1 → 1
-            g = 0.867 - 0.333 * s;        // 0.867 (#dd) → 0.533 (#88)
-            b = 0.0;                      // 0 → 0
+            r = 1.0;
+            g = 0.867 - 0.333 * s;
+            b = 0.0;
         } else {
             const s = (t - 0.5) / 0.5;
-            r = 1.0;                      // 1 → 1
-            g = 0.533 - 0.533 * s;        // 0.533 (#88) → 0
-            b = 0.0;                      // 0 → 0
+            r = 1.0;
+            g = 0.533 - 0.533 * s;
+            b = 0.0;
         }
         return _colorCache.setRGB(r, g, b);
     }
 
-    // 磁场冷色映射：t=0 → 青 (#00ccff)，t=0.5 → 蓝 (#4a4aff)，t=1 → 紫 (#aa00ff)
     function getMagneticColor(t) {
         t = Math.max(0, Math.min(1, t));
         let r, g, b;
         if (t < 0.5) {
             const s = t / 0.5;
-            r = 0.0 + 0.290 * s;          // 0 → 0.290 (#4a)
-            g = 0.800 - 0.510 * s;        // 0.800 (#cc) → 0.290 (#4a)
-            b = 1.0;                      // 1 → 1
+            r = 0.0 + 0.290 * s;
+            g = 0.800 - 0.510 * s;
+            b = 1.0;
         } else {
             const s = (t - 0.5) / 0.5;
-            r = 0.290 + 0.377 * s;        // 0.290 (#4a) → 0.667 (#aa)
-            g = 0.290 - 0.290 * s;        // 0.290 (#4a) → 0
-            b = 1.0;                      // 1 → 1
+            r = 0.290 + 0.377 * s;
+            g = 0.290 - 0.290 * s;
+            b = 1.0;
         }
         return _colorCache.setRGB(r, g, b);
     }
-
-    // 保持原有接口，但根据类型调用不同颜色函数（默认电场色）
-    // 为兼容旧代码，提供 getColorFromStrength 但默认走电场色
-    // 实际电场调用 getElectricColor，磁场调用 getMagneticColor
 
     // ============================================================
     //  7. 公用：清理 group 内所有子对象
@@ -825,7 +964,7 @@
     }
 
     // ============================================================
-    //  8. 电场：场线（随电荷移动）+ 空间矢量（固定空间点）
+    //  8. 电场：场线 + 空间矢量
     // ============================================================
     let electricMode = 'arrows';
 
@@ -856,6 +995,13 @@
         grid: g,
         spacing: 2 * ARROW_HALF_RANGE / (g - 1)
     }));
+
+    function randomSphereDir() {
+        const u = Math.random() * 2 - 1;
+        const phi = Math.random() * Math.PI * 2;
+        const r = Math.sqrt(1 - u * u);
+        return new THREE.Vector3(r * Math.cos(phi), u, r * Math.sin(phi));
+    }
 
     function sampleWeightedDirections(n, beta) {
         // 低速近似下使用各向同性方向分布（不考虑相对论聚集效应）
@@ -899,13 +1045,6 @@
             dirs.push(randomSphereDir());
         }
         return dirs;
-    }
-
-    function randomSphereDir() {
-        const u = Math.random() * 2 - 1;
-        const phi = Math.random() * Math.PI * 2;
-        const r = Math.sqrt(1 - u * u);
-        return new THREE.Vector3(r * Math.cos(phi), u, r * Math.sin(phi));
     }
 
     function buildElectricLines(density) {
@@ -1010,7 +1149,6 @@
 
             let angleFactor;
             if (lowSpeedApprox) {
-                // 低速近似：各向同性，无相对论聚集
                 angleFactor = 1.0;
             } else {
                 angleFactor = Math.pow(
@@ -1033,7 +1171,6 @@
 
                 const radialFactor = 1 / (1 + 0.80 * r);
                 const strength = Math.min(1, angleVis * radialFactor * 1.30);
-                // 使用电场暖色映射
                 const col = getElectricColor(strength);
 
                 colors[j * 3]     = col.r;
@@ -1072,7 +1209,6 @@
 
             let angleFactor;
             if (lowSpeedApprox) {
-                // 低速近似：无相对论修正
                 angleFactor = 1.0;
             } else {
                 const denom = Math.pow(1 - beta2 * sinTheta2, 1.5);
@@ -1084,7 +1220,6 @@
             let strength = angleFactor * radialFactor * 1.8;
             const t = Math.max(0.02, Math.min(1, strength));
 
-            // 电场暖色映射
             const color = getElectricColor(t);
 
             arrow.setDirection(dir);
@@ -1121,7 +1256,7 @@
     let electricGroupVisible = true;
 
     // ============================================================
-    //  9. 磁场：闭合圆环（随电荷移动）+ 空间矢量（固定空间点）
+    //  9. 磁场：闭合圆环 + 空间矢量
     // ============================================================
     let magneticMode = 'arrows';
 
@@ -1274,7 +1409,6 @@
 
             let strength;
             if (lowSpeedApprox) {
-                // 低速近似：经典 Biot-Savart 类似形式，无相对论修正
                 strength = beta * sinTheta / (distance * distance);
             } else {
                 const denom = Math.pow(1 - beta2 * sinTheta2, 1.5);
@@ -1283,7 +1417,6 @@
             }
 
             const t = Math.max(0, Math.min(1, strength * 6.5));
-            // 磁场冷色映射
             const color = getMagneticColor(t);
 
             torus.material.color.copy(color);
@@ -1344,7 +1477,6 @@
 
             let strength;
             if (lowSpeedApprox) {
-                // 低速近似：无相对论修正
                 strength = beta * sinTheta * radialFactor * 4.0;
             } else {
                 const denom = Math.pow(1 - beta2 * sinTheta2, 1.5);
@@ -1353,7 +1485,6 @@
             }
             const t = Math.max(0.02, Math.min(1, strength));
 
-            // 磁场冷色映射
             const color = getMagneticColor(t);
 
             arrow.setDirection(dir);
@@ -1426,7 +1557,7 @@
     let currentBeta = 0.30;
     let electricDensity = 4;
     let magneticDensity = 3;
-    let lowSpeedApprox = false;   // ★ 低速近似开关
+    let lowSpeedApprox = false;
 
     let isPlaying = true;
     const BASE_SPEED = 2.5;
@@ -1472,7 +1603,49 @@
     if (loadingEl) loadingEl.remove();
 
     // ============================================================
-    //  13. 事件绑定
+    //  13. 移动端面板控制
+    // ============================================================
+    const panel = document.getElementById('panel');
+    const menuToggle = document.getElementById('menuToggle');
+    const panelClose = document.getElementById('panelClose');
+    const panelOverlay = document.getElementById('panelOverlay');
+
+    function openPanel() {
+        panel.classList.add('open');
+        panelOverlay.classList.add('active');
+    }
+
+    function closePanel() {
+        panel.classList.remove('open');
+        panelOverlay.classList.remove('active');
+    }
+
+    menuToggle.addEventListener('click', () => {
+        if (panel.classList.contains('open')) {
+            closePanel();
+        } else {
+            openPanel();
+        }
+    });
+
+    panelClose.addEventListener('click', closePanel);
+    panelOverlay.addEventListener('click', closePanel);
+
+    // 桌面端默认打开面板，移动端默认关闭
+    function handleResizePanel() {
+        if (window.innerWidth <= 900) {
+            // 移动端: 默认关闭面板
+            closePanel();
+        } else {
+            // 桌面端: 默认打开面板，无遮罩
+            panel.classList.add('open');
+            panelOverlay.classList.remove('active');
+        }
+    }
+    handleResizePanel();
+
+    // ============================================================
+    //  14. 事件绑定
     // ============================================================
     let speedTimer = null;
     document.getElementById('speedSlider').addEventListener('input', (e) => {
@@ -1497,13 +1670,11 @@
         }
     });
 
-    // ★ 低速近似开关
     document.getElementById('lowSpeedToggle').addEventListener('change', (e) => {
         lowSpeedApprox = e.target.checked;
         const badge = document.getElementById('approxBadge');
         badge.style.display = lowSpeedApprox ? 'inline-block' : 'none';
 
-        // 低速近似下重建电场线（方向分布不同）和所有场
         rebuildElectricField(electricDensity);
         rebuildMagneticField(magneticDensity);
 
@@ -1640,7 +1811,7 @@
     });
 
     // ============================================================
-    //  14. 窗口自适应
+    //  15. 窗口自适应
     // ============================================================
     window.addEventListener('resize', () => {
         const w = canvasWrap.clientWidth;
@@ -1649,10 +1820,16 @@
         camera.updateProjectionMatrix();
         renderer.setSize(w, h);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        handleResizePanel();
+    });
+
+    // 移动端横竖屏切换也处理面板
+    window.addEventListener('orientationchange', () => {
+        setTimeout(handleResizePanel, 200);
     });
 
     // ============================================================
-    //  15. 动画循环
+    //  16. 动画循环
     // ============================================================
     const clock = new THREE.Clock();
 
@@ -1719,7 +1896,7 @@
 
     animate();
 
-    console.log('%c⚡ 运动电荷电磁场仿真 · 支持低速近似（暖/冷色映射）',
+    console.log('%c⚡ 运动电荷电磁场仿真 · 移动端可隐藏面板',
         'color:#ffaa00; font-weight:bold; font-size:14px;');
     </script>
 </body>

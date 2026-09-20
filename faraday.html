@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>法拉第电磁感应定律 · 电场可视化</title>
     <style>
         :root {
@@ -13,12 +13,18 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        html, body {
+            overscroll-behavior: none;
+            touch-action: none;
         }
         body {
             font-family: 'Segoe UI', 'PingFang SC', Roboto, system-ui, -apple-system, sans-serif;
             background: #0b1219;
             color: #e8edf3;
             height: 100vh;
+            height: 100dvh;
             overflow: hidden;
             display: flex;
             flex-direction: column;
@@ -62,17 +68,20 @@
             background: rgba(18, 28, 40, 0.75);
             backdrop-filter: blur(6px);
             overflow: hidden;
+            min-height: 0;
         }
         #canvas-wrap {
             flex: 1;
             position: relative;
             background: #0a0f16;
             overflow: hidden;
+            min-height: 0;
         }
         #canvas-wrap canvas {
             display: block;
             width: 100%;
             height: 100%;
+            touch-action: none;
         }
         #loading {
             position: absolute;
@@ -85,6 +94,24 @@
             z-index: 999;
             text-shadow: 0 0 15px rgba(255,170,0,0.5);
             text-align: center;
+        }
+        #loading .spinner {
+            width: 40px;
+            height: 40px;
+            margin: 0 auto 16px;
+            border: 3px solid rgba(255,170,0,0.2);
+            border-top-color: #ffaa00;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        #loading .stage {
+            font-size: 0.75rem;
+            color: #6a80a0;
+            margin-top: 8px;
+            letter-spacing: 1px;
         }
         #loading .err {
             color: #ff6b6b;
@@ -261,13 +288,6 @@
             align-items: center;
             gap: 8px;
         }
-        .section-label .badge {
-            font-size: 10px;
-            background: rgba(255, 255, 255, 0.06);
-            padding: 0 10px;
-            border-radius: 12px;
-            color: #6a8aaa;
-        }
         .btn-group {
             display: flex;
             gap: 6px;
@@ -335,10 +355,6 @@
             border-color: rgba(80, 255, 150, 0.35);
             box-shadow: 0 0 18px rgba(60, 255, 130, 0.2);
         }
-        .btn-pause.btn-paused:hover {
-            background: linear-gradient(135deg, #3a9a5a, #2a7040);
-            box-shadow: 0 4px 16px rgba(60, 255, 130, 0.3);
-        }
         .slider-group {
             margin-top: 6px;
         }
@@ -365,8 +381,8 @@
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
-            width: 16px;
-            height: 16px;
+            width: 18px;
+            height: 18px;
             border-radius: 50%;
             background: linear-gradient(135deg, #5a8ad0, #3a6aaa);
             cursor: pointer;
@@ -374,12 +390,9 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
             transition: 0.15s;
         }
-        input[type="range"]::-webkit-slider-thumb:hover {
-            transform: scale(1.1);
-        }
         input[type="range"]::-moz-range-thumb {
-            width: 16px;
-            height: 16px;
+            width: 18px;
+            height: 18px;
             border-radius: 50%;
             background: linear-gradient(135deg, #5a8ad0, #3a6aaa);
             cursor: pointer;
@@ -465,46 +478,175 @@
             transform: translateX(18px);
             background: #fff;
         }
+
+        /* 移动端折叠面板按钮 */
+        #panel-toggle {
+            display: none;
+        }
+
+        /* ============================================================
+           移动端适配
+           ============================================================ */
         @media (max-width: 900px) {
+            .header {
+                height: 48px;
+                padding: 0 12px;
+            }
+            .header h1 {
+                font-size: 13px;
+                letter-spacing: 1px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                max-width: 65vw;
+            }
+            .header .back {
+                font-size: 11px;
+                gap: 4px;
+            }
+
             #app {
                 flex-direction: column;
                 height: auto;
                 width: 100vw;
                 backdrop-filter: none;
             }
+
+            #canvas-wrap {
+                height: 100%;
+                flex: 1;
+            }
+
+            /* 信息面板缩小 */
+            #info {
+                top: 8px;
+                left: 8px;
+                padding: 8px 12px;
+                max-width: 55vw;
+                border-radius: 10px;
+            }
+            #info h1 {
+                font-size: 0.82rem;
+                margin-bottom: 4px;
+            }
+            #info p {
+                font-size: 0.7rem;
+                margin: 2px 0;
+                line-height: 1.35;
+            }
+            #info p:last-child {
+                display: none; /* 隐藏提示语 */
+            }
+
+            /* 表盘缩小 */
+            #emf-meter {
+                width: 200px;
+                height: 94px;
+                bottom: 10px;
+            }
+
+            /* 面板变为从底部弹出的抽屉 */
             #panel {
+                position: fixed;
+                left: 0;
+                right: 0;
+                bottom: 0;
                 width: 100%;
                 min-width: unset;
-                max-height: 45vh;
+                max-height: 60vh;
                 border-left: none;
-                border-top: 1px solid rgba(255, 255, 255, 0.05);
-                padding: 16px;
+                border-top: 1px solid rgba(255, 255, 255, 0.08);
+                border-radius: 16px 16px 0 0;
+                padding: 18px 16px 24px;
+                background: rgba(10, 18, 28, 0.95);
+                transform: translateY(calc(100% - 48px));
+                transition: transform 0.3s ease;
+                z-index: 200;
+                gap: 12px;
             }
-            #canvas-wrap {
-                height: 55vh;
+            #panel.expanded {
+                transform: translateY(0);
             }
-            #emf-meter {
-                width: 240px;
-                height: 115px;
-                bottom: 12px;
+            #panel::before {
+                content: "";
+                position: absolute;
+                top: 8px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 40px;
+                height: 4px;
+                border-radius: 2px;
+                background: rgba(255,255,255,0.2);
             }
-        }
-        @media (max-width: 500px) {
-            #panel {
-                padding: 12px;
-                gap: 10px;
+            #panel-toggle {
+                display: block;
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 48px;
+                background: transparent;
+                border: none;
+                color: #b0d0ff;
+                font-size: 13px;
+                font-weight: 600;
+                letter-spacing: 1px;
+                cursor: pointer;
+                z-index: 10;
+                font-family: inherit;
+            }
+            .panel-title {
+                margin-top: 6px;
+                font-size: 15px;
             }
             .section {
                 padding: 10px 12px;
+                border-radius: 10px;
+            }
+            .section-label {
+                font-size: 12px;
+                margin-bottom: 8px;
             }
             .btn {
                 font-size: 11.5px;
-                padding: 6px 8px;
+                padding: 8px 8px;
                 min-width: 44px;
+                border-radius: 8px;
             }
+            .btn-pause {
+                padding: 10px 12px;
+                font-size: 13px;
+            }
+            .switch-label {
+                font-size: 12px;
+            }
+            .switch-label .hint {
+                display: none;
+            }
+            .slider-group label {
+                font-size: 11.5px;
+            }
+            .legend-item {
+                font-size: 11px;
+            }
+        }
+
+        /* 超小屏 */
+        @media (max-width: 500px) {
             #info {
-                max-width: 200px;
-                padding: 8px 12px;
+                max-width: 60vw;
+                padding: 6px 10px;
+            }
+            #info h1 {
+                font-size: 0.75rem;
+            }
+            #info p {
+                font-size: 0.65rem;
+            }
+            #emf-meter {
+                width: 170px;
+                height: 80px;
+                bottom: 8px;
             }
         }
     </style>
@@ -512,36 +654,28 @@
 <body>
 
     <header class="header">
-        <h1>⚡ 法拉第电磁感应定律 · 电场可视化</h1>
-        <a class="back" href="index.html">← 返回实验大厅</a>
+        <h1>⚡ 法拉第电磁感应定律</h1>
+        <a class="back" href="index.html">← 返回</a>
     </header>
 
     <div id="app">
         <div id="canvas-wrap">
             <div id="loading">
-                <div>正在加载 WebGL 场景…</div>
+                <div class="spinner"></div>
+                <div>正在加载 3D 场景…</div>
+                <div class="stage" id="loading-stage">准备中</div>
                 <div class="err" id="loading-err"></div>
             </div>
 
             <div id="info">
                 <h1>⚡ 法拉第电磁感应定律</h1>
-                <p>
-                    感应电动势 <span class="e-color">E = - dΦ / dt</span>
-                </p>
-                <p>
-                    磁铁位置：<span class="pos" id="info-position">z = 0.00</span>
-                </p>
-                <p>
-                    移动速度：<span class="hl" id="info-speed">1.0x</span>
-                </p>
-                <p>
-                    感应电场 <span class="efield">涡旋场 (环绕轴线)</span>
-                </p>
-                <p>
-                    运动状态：<span class="paused" id="info-pause-state">▶ 运行中</span>
-                </p>
+                <p>电动势 <span class="e-color">E = - dΦ / dt</span></p>
+                <p>磁铁：<span class="pos" id="info-position">z = 0.00</span></p>
+                <p>速度：<span class="hl" id="info-speed">1.0x</span></p>
+                <p>电场：<span class="efield">涡旋场</span></p>
+                <p>状态：<span class="paused" id="info-pause-state">▶ 运行中</span></p>
                 <p style="font-size:0.75rem; opacity:0.65;">
-                    ※ 箭头方向表示涡旋电场方向，颜色表示场强大小
+                    ※ 箭头方向=涡旋电场方向，颜色=场强大小
                 </p>
             </div>
 
@@ -563,6 +697,7 @@
         </div>
 
         <div id="panel">
+            <button id="panel-toggle">▲ 控制面板</button>
             <div class="panel-title">
                 ⚡ 电场 & 电磁感应
             </div>
@@ -602,10 +737,7 @@
             <div class="section">
                 <div class="section-label">🔄 自动移动</div>
                 <div class="switch-row">
-                    <span class="switch-label">
-                        🚀 磁铁自动往复
-                        <span class="hint">匀速</span>
-                    </span>
+                    <span class="switch-label">🚀 磁铁自动往复</span>
                     <label class="toggle-switch">
                         <input type="checkbox" id="autoToggle">
                         <span class="toggle-slider"></span>
@@ -648,13 +780,11 @@
             </div>
 
             <div class="section">
-                <div class="section-label">🖱️ 手动操作</div>
+                <div class="section-label">🖱️ 操作说明</div>
                 <p style="font-size:12px; color:#7a90aa; line-height:1.7; margin:2px 0;">
-                    • <span style="color:#b0c8e0;">按住左键拖动</span> 移动磁铁<br>
-                    • <span style="color:#b0c8e0;">按住右键拖动</span> 旋转视角<br>
-                    • <span style="color:#b0c8e0;">鼠标滚轮</span> 缩放视图<br>
-                    • <span style="color:#b0c8e0;">键盘 ← →</span> 微调磁铁<br>
-                    • <span style="color:#b0c8e0;">空格键</span> 暂停/继续
+                    <span style="color:#b0c8e0;">桌面端</span>：左键拖动磁铁，右键旋转，滚轮缩放<br>
+                    <span style="color:#b0c8e0;">移动端</span>：单指旋转，双指缩放，长按磁铁拖动<br>
+                    <span style="color:#b0c8e0;">键盘</span>：← → 微调磁铁，空格暂停/继续
                 </p>
             </div>
 
@@ -678,6 +808,9 @@
         </div>
     </div>
 
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+
     <script type="importmap">
     {
         "imports": {
@@ -688,20 +821,51 @@
     </script>
 
     <script type="module">
+    const loadingEl = document.getElementById('loading');
+    const loadingStage = document.getElementById('loading-stage');
+    const loadingErr = document.getElementById('loading-err');
+
+    function setStage(text) {
+        if (loadingStage) loadingStage.textContent = text;
+    }
+
     window.addEventListener('error', (e) => {
-        const errEl = document.getElementById('loading-err');
-        if (errEl && errEl.textContent === '') {
-            errEl.textContent = '加载错误：' + (e.message || '未知错误') +
+        if (loadingErr && loadingErr.textContent === '') {
+            loadingErr.textContent = '加载错误：' + (e.message || '未知错误') +
                 '。请检查网络连接。';
         }
     });
 
-    import * as THREE from 'three';
-    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    // 检测是否为移动端/触摸设备
+    const isTouchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+    const isMobile = window.matchMedia('(max-width: 900px)').matches;
 
-    const loadingEl = document.getElementById('loading');
+    setStage('正在下载 Three.js 库…');
+
+    let THREE, OrbitControls;
+
+    async function loadThree() {
+        const loadPromise = (async () => {
+            const threeModule = await import('three');
+            const controlsModule = await import('three/addons/controls/OrbitControls.js');
+            return { THREE: threeModule, OrbitControls: controlsModule.OrbitControls };
+        })();
+
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('加载超时，请检查网络连接')), 15000);
+        });
+
+        return Promise.race([loadPromise, timeoutPromise]);
+    }
 
     try {
+        const modules = await loadThree();
+        THREE = modules.THREE;
+        OrbitControls = modules.OrbitControls;
+
+        setStage('正在构建 3D 场景…');
+        await new Promise(r => setTimeout(r, 30));
+
         // ============================================================
         //  1. 场景 / 相机 / 渲染器
         // ============================================================
@@ -715,48 +879,73 @@
         camera.position.set(7, 5, 11);
         camera.lookAt(0, 0, 0);
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+        const renderer = new THREE.WebGLRenderer({
+            antialias: !isMobile, // 移动端关闭抗锯齿提升性能
+            powerPreference: 'high-performance'
+        });
         renderer.setSize(w0, h0);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
+        renderer.shadowMap.enabled = !isMobile; // 移动端关闭阴影
+        if (renderer.shadowMap.enabled) {
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        }
         renderer.domElement.style.display = 'block';
+        renderer.domElement.style.touchAction = 'none';
         canvasWrap.appendChild(renderer.domElement);
 
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.08;
-        controls.enableZoom = true;
+        controls.enableZoom = true;          // 启用双指缩放/滚轮缩放
+        controls.enableRotate = true;        // 启用旋转（触摸单指旋转）
         controls.enablePan = false;
+        controls.rotateSpeed = isMobile ? 0.7 : 1.0;
+        controls.zoomSpeed = isMobile ? 0.8 : 1.0;
         controls.target.set(0, 0, 0);
         controls.maxPolarAngle = Math.PI / 2;
-        controls.mouseButtons = {
-            LEFT: null,
-            MIDDLE: THREE.MOUSE.DOLLY,
-            RIGHT: THREE.MOUSE.ROTATE
-        };
+        controls.minDistance = 5;
+        controls.maxDistance = 25;
+
+        // 桌面端：左键禁用旋转（用于拖动磁铁），右键旋转
+        // 移动端：单指旋转，双指缩放，长按磁铁拖动
+        if (!isTouchDevice) {
+            controls.mouseButtons = {
+                LEFT: null,
+                MIDDLE: THREE.MOUSE.DOLLY,
+                RIGHT: THREE.MOUSE.ROTATE
+            };
+        } else {
+            // 触摸设备：单指旋转、双指缩放
+            controls.touches = {
+                ONE: THREE.TOUCH.ROTATE,
+                TWO: THREE.TOUCH.DOLLY_ROTATE
+            };
+            controls.mouseButtons = {
+                LEFT: THREE.MOUSE.ROTATE,
+                MIDDLE: THREE.MOUSE.DOLLY,
+                RIGHT: THREE.MOUSE.ROTATE
+            };
+        }
 
         // ============================================================
         //  2. 光照
         // ============================================================
-        scene.add(new THREE.AmbientLight(0x707090, 1.3));
+        scene.add(new THREE.AmbientLight(0x707090, 1.4));
 
         const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
         dirLight.position.set(6, 10, 8);
-        dirLight.castShadow = true;
-        dirLight.shadow.mapSize.set(1024, 1024);
-        const d = 12;
-        dirLight.shadow.camera.left = -d;
-        dirLight.shadow.camera.right = d;
-        dirLight.shadow.camera.top = d;
-        dirLight.shadow.camera.bottom = -d;
-        dirLight.shadow.camera.near = 1;
-        dirLight.shadow.camera.far = 25;
+        if (!isMobile) {
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.set(1024, 1024);
+            const d = 12;
+            dirLight.shadow.camera.left = -d;
+            dirLight.shadow.camera.right = d;
+            dirLight.shadow.camera.top = d;
+            dirLight.shadow.camera.bottom = -d;
+            dirLight.shadow.camera.near = 1;
+            dirLight.shadow.camera.far = 25;
+        }
         scene.add(dirLight);
-
-        const fillLight = new THREE.PointLight(0x4466ff, 0.6);
-        fillLight.position.set(-6, 2, -6);
-        scene.add(fillLight);
 
         const magnetLight = new THREE.PointLight(0xffaa33, 0.9, 12);
         magnetLight.position.set(0, 1.5, 0);
@@ -766,7 +955,7 @@
         //  3. 背景星空
         // ============================================================
         (function createStars() {
-            const count = 2000;
+            const count = isMobile ? 600 : 1000;
             const positions = new Float32Array(count * 3);
             for (let i = 0; i < count * 3; i += 3) {
                 positions[i]     = (Math.random() - 0.5) * 1500;
@@ -801,7 +990,7 @@
         );
         floor.rotation.x = -Math.PI / 2;
         floor.position.y = -1.8;
-        floor.receiveShadow = true;
+        floor.receiveShadow = !isMobile;
         scene.add(floor);
 
         // ============================================================
@@ -815,8 +1004,9 @@
 
         const spiralPoints = [];
         const totalAngle = 2 * Math.PI * coilTurns;
-        for (let i = 0; i <= 500; i++) {
-            const t = i / 500;
+        const coilSteps = isMobile ? 200 : 300;
+        for (let i = 0; i <= coilSteps; i++) {
+            const t = i / coilSteps;
             const theta = t * totalAngle;
             spiralPoints.push(new THREE.Vector3(
                 coilRadius * Math.cos(theta),
@@ -826,7 +1016,7 @@
         }
         const spiralCurve = new THREE.CatmullRomCurve3(spiralPoints);
         const coilMesh = new THREE.Mesh(
-            new THREE.TubeGeometry(spiralCurve, 500, tubeR, 8, false),
+            new THREE.TubeGeometry(spiralCurve, coilSteps, tubeR, isMobile ? 5 : 6, false),
             new THREE.MeshStandardMaterial({
                 color: 0xffaa33,
                 emissive: 0x442200,
@@ -835,8 +1025,8 @@
                 metalness: 0.9
             })
         );
-        coilMesh.castShadow = true;
-        coilMesh.receiveShadow = true;
+        coilMesh.castShadow = !isMobile;
+        coilMesh.receiveShadow = !isMobile;
         coilGroup.add(coilMesh);
 
         const wireMat = new THREE.MeshStandardMaterial({ color: 0xcc8844, roughness: 0.4, metalness: 0.8 });
@@ -845,8 +1035,8 @@
                 spiralPoints[0].clone(),
                 spiralPoints[0].clone().add(new THREE.Vector3(1.0, 0, -0.5)),
                 spiralPoints[0].clone().add(new THREE.Vector3(1.6, -0.8, -1.0))
-            ]), 16, 0.04, 6, false), wireMat);
-        w1.castShadow = true;
+            ]), 12, 0.04, 5, false), wireMat);
+        w1.castShadow = !isMobile;
         coilGroup.add(w1);
 
         const w2 = new THREE.Mesh(new THREE.TubeGeometry(
@@ -854,8 +1044,8 @@
                 spiralPoints[spiralPoints.length - 1].clone(),
                 spiralPoints[spiralPoints.length - 1].clone().add(new THREE.Vector3(1.0, 0, 0.5)),
                 spiralPoints[spiralPoints.length - 1].clone().add(new THREE.Vector3(1.6, 0.8, 1.0))
-            ]), 16, 0.04, 6, false), wireMat);
-        w2.castShadow = true;
+            ]), 12, 0.04, 5, false), wireMat);
+        w2.castShadow = !isMobile;
         coilGroup.add(w2);
 
         scene.add(coilGroup);
@@ -878,8 +1068,8 @@
             })
         );
         nMesh.position.z = mLen / 4;
-        nMesh.castShadow = true;
-        nMesh.receiveShadow = true;
+        nMesh.castShadow = !isMobile;
+        nMesh.receiveShadow = !isMobile;
         magnetGroup.add(nMesh);
 
         const sMesh = new THREE.Mesh(
@@ -893,8 +1083,8 @@
             })
         );
         sMesh.position.z = -mLen / 4;
-        sMesh.castShadow = true;
-        sMesh.receiveShadow = true;
+        sMesh.castShadow = !isMobile;
+        sMesh.receiveShadow = !isMobile;
         magnetGroup.add(sMesh);
 
         magnetGroup.add(new THREE.LineSegments(
@@ -919,14 +1109,14 @@
         monopoleGroup.add(posMonopole);
 
         posMonopole.add(new THREE.Mesh(
-            new THREE.SphereGeometry(0.06, 16, 16),
+            new THREE.SphereGeometry(0.06, 12, 12),
             new THREE.MeshStandardMaterial({
                 color: 0xff4444, emissive: 0xff2222, emissiveIntensity: 1.2,
                 roughness: 0.3, metalness: 0.2
             })
         ));
         posMonopole.add(new THREE.Mesh(
-            new THREE.SphereGeometry(0.12, 12, 12),
+            new THREE.SphereGeometry(0.12, 10, 10),
             new THREE.MeshBasicMaterial({
                 color: 0xff5555, transparent: true, opacity: 0.35,
                 depthWrite: false, blending: THREE.AdditiveBlending
@@ -939,14 +1129,14 @@
         monopoleGroup.add(negMonopole);
 
         negMonopole.add(new THREE.Mesh(
-            new THREE.SphereGeometry(0.06, 16, 16),
+            new THREE.SphereGeometry(0.06, 12, 12),
             new THREE.MeshStandardMaterial({
                 color: 0x4488ff, emissive: 0x2266ff, emissiveIntensity: 1.2,
                 roughness: 0.3, metalness: 0.2
             })
         ));
         negMonopole.add(new THREE.Mesh(
-            new THREE.SphereGeometry(0.12, 12, 12),
+            new THREE.SphereGeometry(0.12, 10, 10),
             new THREE.MeshBasicMaterial({
                 color: 0x5599ff, transparent: true, opacity: 0.35,
                 depthWrite: false, blending: THREE.AdditiveBlending
@@ -993,8 +1183,8 @@
             const points = [startPos.clone()];
             let p = startPos.clone();
 
-            const step = 0.09;
-            const maxSteps = 400;
+            const step = 0.11;
+            const maxSteps = isMobile ? 180 : 250;
             const bound = 8.0;
 
             for (let i = 0; i < maxSteps; i++) {
@@ -1003,13 +1193,7 @@
                 if (Bmag < 1e-6) break;
 
                 const dir = B.clone().divideScalar(Bmag);
-                const midP = p.clone().addScaledVector(dir, step * 0.5);
-                const Bmid = magneticFieldAt(midP);
-                const BmidMag = Bmid.length();
-                if (BmidMag < 1e-6) break;
-                const midDir = Bmid.clone().divideScalar(BmidMag);
-
-                p = p.clone().addScaledVector(midDir, step);
+                p = p.clone().addScaledVector(dir, step);
                 points.push(p.clone());
 
                 const distToS = p.distanceTo(new THREE.Vector3(0, 0, negMonopoleZ));
@@ -1041,6 +1225,8 @@
             const numAzimuth = density === 1 ? 8 : (density === 2 ? 12 : (density === 3 ? 18 : 24));
             const numRings = density === 1 ? 1 : (density === 2 ? 2 : (density === 3 ? 3 : 4));
             const totalLines = numAzimuth * numRings;
+
+            const coneGeo = new THREE.ConeGeometry(ARROW_SIZE * 0.9, ARROW_SIZE * 2.2, 5);
 
             for (let i = 0; i < totalLines; i++) {
                 const phi = Math.acos(1 - 2 * (i + 0.5) / totalLines);
@@ -1116,7 +1302,7 @@
                     const b = colors[colorIdx + 2];
 
                     const cone = new THREE.Mesh(
-                        new THREE.ConeGeometry(ARROW_SIZE * 0.9, ARROW_SIZE * 2.2, 6),
+                        coneGeo,
                         new THREE.MeshStandardMaterial({
                             color: new THREE.Color(r, g, b),
                             emissive: new THREE.Color(r, g, b),
@@ -1134,16 +1320,15 @@
         }
 
         // ============================================================
-        //  9. 感应电场矢量系统（涡旋场，方向已修正）
+        //  9. 感应电场矢量系统（涡旋场）
         // ============================================================
         const eFieldGroup = new THREE.Group();
         scene.add(eFieldGroup);
 
-        let prevMagnetZ = magnetGroup.position.z;
         let currentMagnetVelocity = 0;
 
         const eArrowShaftGeo = new THREE.CylinderGeometry(0.03, 0.03, 1, 5);
-        const eArrowHeadGeo = new THREE.ConeGeometry(0.09, 0.35, 6);
+        const eArrowHeadGeo = new THREE.ConeGeometry(0.09, 0.35, 5);
 
         const eArrowPool = [];
 
@@ -1181,41 +1366,25 @@
             }
         }
 
-        // density: 0=关闭, 1=低, 2=中, 3=高, 4=超高
-        // 物理模型：感应电场为涡旋场，环绕螺线管轴线
-        // - 无 z 轴分量（eFieldZ = 0）
-        // - 切向方向由楞次定律决定（vortexSign = -velSign）
-        // - 强度：内部 ∝ r，外部 ∝ 1/r
         function buildEFieldArrows(density, velocity) {
             releaseAllEArrows();
 
-            if (density === 0) {
-                return;
-            }
+            if (density === 0) return;
 
             const speedAbs = Math.abs(velocity);
-            if (speedAbs < 0.05) {
-                return;
-            }
+            if (speedAbs < 0.05) return;
 
             const vFactor = Math.min(1.5, speedAbs * 0.5);
 
             let gridSize, range;
-            if (density === 1) {
-                gridSize = 5; range = 3.0;
-            } else if (density === 2) {
-                gridSize = 7; range = 3.6;
-            } else if (density === 3) {
-                gridSize = 9; range = 4.0;
-            } else {
-                gridSize = 11; range = 4.4;
-            }
+            if (density === 1) { gridSize = 5; range = 3.0; }
+            else if (density === 2) { gridSize = isMobile ? 6 : 7; range = 3.6; }
+            else if (density === 3) { gridSize = isMobile ? 7 : 9; range = 4.0; }
+            else { gridSize = isMobile ? 9 : 11; range = 4.4; }
             const spacing = range * 2 / (gridSize - 1);
 
             const magnetZ = magnetGroup.position.z;
             const velSign = Math.sign(velocity);
-            // 楞次定律：感应电场方向阻碍磁通变化
-            // 磁铁向 +z 运动 → 电场顺时针环绕（从 +z 看）；反之逆时针
             const vortexSign = -velSign;
 
             const tmpColor = new THREE.Color();
@@ -1236,15 +1405,12 @@
                         const zDist = z - magnetZ;
                         const rFromCoilAxis = Math.sqrt(x * x + y * y);
 
-                        // 基础强度衰减
                         const eMagBase = vFactor * 1.2 / (1 + rFromCoilAxis * 0.7) * (1 / (1 + Math.abs(zDist) * 0.6));
 
-                        // 切向单位向量 (逆时针): (-y/r, x/r)
                         const rSafe = Math.max(rFromCoilAxis, 1e-6);
                         const tangentX = -y / rSafe;
                         const tangentY = x / rSafe;
 
-                        // 涡旋电场强度：内部 ∝ r，外部 ∝ 1/r
                         let eMagTangential;
                         if (rFromCoilAxis < coilRadius) {
                             eMagTangential = eMagBase * rFromCoilAxis * 0.9;
@@ -1252,10 +1418,8 @@
                             eMagTangential = eMagBase * coilRadius * coilRadius / rSafe * 0.9;
                         }
 
-                        // 涡旋电场：只有切向分量，无 z 分量
                         const eFieldX = vortexSign * tangentX * eMagTangential;
                         const eFieldY = vortexSign * tangentY * eMagTangential;
-                        const eFieldZ = 0;
 
                         const eMag = Math.sqrt(eFieldX * eFieldX + eFieldY * eFieldY);
                         if (eMag < 0.04) continue;
@@ -1264,9 +1428,7 @@
                         const invMag = 1 / eMag;
                         const dirX = eFieldX * invMag;
                         const dirY = eFieldY * invMag;
-                        const dirZ = 0;
 
-                        // 颜色映射
                         if (eMag < 0.25) {
                             const t = eMag / 0.25;
                             tmpColor.setRGB(0, 0.6 + 0.4 * t, 1.0);
@@ -1284,7 +1446,7 @@
                         const arrowGroup = getPooledArrow();
                         arrowGroup.position.set(x, y, z);
 
-                        dirVec.set(dirX, dirY, dirZ);
+                        dirVec.set(dirX, dirY, 0);
                         arrowGroup.quaternion.setFromUnitVectors(upVec, dirVec);
 
                         const headLen = arrowLen * 0.35;
@@ -1490,7 +1652,7 @@
                 pauseIcon.textContent = '▶';
                 pauseText.textContent = '继续运动';
                 pauseBtn.classList.add('btn-paused');
-                pauseStateEl.textContent = '⏸ 已暂停（场已冻结）';
+                pauseStateEl.textContent = '⏸ 已暂停';
             } else {
                 pauseIcon.textContent = '⏸';
                 pauseText.textContent = '暂停运动';
@@ -1520,9 +1682,9 @@
         });
 
         // ============================================================
-        //  13. 拖动逻辑
+        //  13. 交互逻辑（桌面 + 移动端分离）
         // ============================================================
-        let isDragging = false;
+        let isDraggingMagnet = false;
         let lastX = 0;
         let targetMagnetZ = magnetGroup.position.z;
         const SENSITIVITY = 10.0;
@@ -1532,9 +1694,10 @@
         const camForward = new THREE.Vector3();
         const camUp = new THREE.Vector3();
 
-        function onPointerDown(e) {
+        // ---- 桌面端：左键拖动磁铁，右键旋转 ----
+        function onPointerDownDesktop(e) {
             if (e.button === 0) {
-                isDragging = true;
+                isDraggingMagnet = true;
                 lastX = e.clientX;
                 targetMagnetZ = magnetGroup.position.z;
                 controls.enabled = false;
@@ -1543,8 +1706,8 @@
             }
         }
 
-        function onPointerMove(e) {
-            if (isDragging) {
+        function onPointerMoveDesktop(e) {
+            if (isDraggingMagnet) {
                 const dx = e.clientX - lastX;
                 lastX = e.clientX;
 
@@ -1556,9 +1719,9 @@
             }
         }
 
-        function onPointerUp(e) {
-            if (e.button === 0 && isDragging) {
-                isDragging = false;
+        function onPointerUpDesktop(e) {
+            if (e.button === 0 && isDraggingMagnet) {
+                isDraggingMagnet = false;
                 controls.enabled = true;
                 canvas.style.cursor = 'default';
                 if (autoMove && !isPaused) {
@@ -1569,14 +1732,111 @@
             }
         }
 
-        function onPointerCancel() {
-            if (isDragging) {
-                isDragging = false;
-                controls.enabled = true;
-                canvas.style.cursor = 'default';
+        // ---- 移动端：长按磁铁拖动，其余交给 OrbitControls ----
+        let touchDragTimer = null;
+        let touchDragActive = false;
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchCurrentX = 0;
+
+        function onTouchStart(e) {
+            if (e.touches.length !== 1) {
+                // 双指触摸：取消长按等待
+                if (touchDragTimer) {
+                    clearTimeout(touchDragTimer);
+                    touchDragTimer = null;
+                }
+                return;
+            }
+
+            const t = e.touches[0];
+            touchStartX = t.clientX;
+            touchStartY = t.clientY;
+            touchCurrentX = t.clientX;
+
+            // 记录当前磁铁位置
+            targetMagnetZ = magnetGroup.position.z;
+
+            // 启动长按计时器：300ms 后进入磁铁拖动模式
+            if (touchDragTimer) clearTimeout(touchDragTimer);
+            touchDragTimer = setTimeout(() => {
+                touchDragActive = true;
+                // 进入拖动模式：临时禁用 OrbitControls
+                controls.enabled = false;
+            }, 300);
+        }
+
+        function onTouchMove(e) {
+            if (e.touches.length !== 1) {
+                // 双指：取消拖动模式
+                if (touchDragTimer) {
+                    clearTimeout(touchDragTimer);
+                    touchDragTimer = null;
+                }
+                if (touchDragActive) {
+                    touchDragActive = false;
+                    controls.enabled = true;
+                }
+                return;
+            }
+
+            const t = e.touches[0];
+
+            // 如果还没进入拖动模式，检查移动距离是否超过阈值（超过则取消长按）
+            if (!touchDragActive && touchDragTimer) {
+                const dx = Math.abs(t.clientX - touchStartX);
+                const dy = Math.abs(t.clientY - touchStartY);
+                if (dx > 8 || dy > 8) {
+                    clearTimeout(touchDragTimer);
+                    touchDragTimer = null;
+                }
+                return;
+            }
+
+            // 进入拖动模式后，处理磁铁移动
+            if (touchDragActive) {
+                e.preventDefault();
+                const dx = t.clientX - touchCurrentX;
+                touchCurrentX = t.clientX;
+
+                camera.matrixWorld.extractBasis(camRight, camUp, camForward);
+                const zProjection = camRight.z;
+
+                targetMagnetZ += dx * zProjection * (SENSITIVITY / window.innerWidth) * 2;
+                targetMagnetZ = Math.max(-5.0, Math.min(5.0, targetMagnetZ));
             }
         }
 
+        function onTouchEnd(e) {
+            if (touchDragTimer) {
+                clearTimeout(touchDragTimer);
+                touchDragTimer = null;
+            }
+            if (touchDragActive) {
+                touchDragActive = false;
+                controls.enabled = true;
+                if (autoMove && !isPaused) {
+                    autoPos = magnetGroup.position.z;
+                    if (autoPos >= AUTO_AMPLITUDE - 0.1) autoDir = -1;
+                    else if (autoPos <= -AUTO_AMPLITUDE + 0.1) autoDir = 1;
+                }
+            }
+        }
+
+        // ---- 绑定事件（区分设备） ----
+        if (isTouchDevice) {
+            canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+            canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+            canvas.addEventListener('touchend', onTouchEnd, { passive: true });
+            canvas.addEventListener('touchcancel', onTouchEnd, { passive: true });
+        } else {
+            canvas.addEventListener('pointerdown', onPointerDownDesktop);
+            window.addEventListener('pointermove', onPointerMoveDesktop);
+            window.addEventListener('pointerup', onPointerUpDesktop);
+            window.addEventListener('pointercancel', onPointerUpDesktop);
+        }
+
+        // 键盘控制（桌面）
         function onKeyDown(e) {
             if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
                 const dir = e.key === 'ArrowRight' ? 1 : -1;
@@ -1593,16 +1853,33 @@
                 pauseBtn.click();
             }
         }
-
-        canvas.addEventListener('pointerdown', onPointerDown);
-        window.addEventListener('pointermove', onPointerMove);
-        window.addEventListener('pointerup', onPointerUp);
-        window.addEventListener('pointercancel', onPointerCancel);
         window.addEventListener('keydown', onKeyDown);
+
+        // ---- 移动端面板抽屉交互 ----
+        const panelEl = document.getElementById('panel');
+        const panelToggle = document.getElementById('panel-toggle');
+
+        panelToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            panelEl.classList.toggle('expanded');
+            panelToggle.textContent = panelEl.classList.contains('expanded')
+                ? '▼ 收起面板'
+                : '▲ 控制面板';
+        });
+
+        // 从面板内部向上滑动手势展开
+        panelEl.addEventListener('touchstart', (e) => {
+            if (e.target === panelEl) {
+                panelEl.classList.add('expanded');
+                panelToggle.textContent = '▼ 收起面板';
+            }
+        }, { passive: true });
 
         // ============================================================
         //  14. 初始化
         // ============================================================
+        setStage('正在生成磁场线…');
+        await new Promise(r => setTimeout(r, 20));
         buildFieldLines(currentDensity);
         updateEFieldDensityButtons();
         updatePauseUI();
@@ -1619,9 +1896,13 @@
             camera.aspect = w / h;
             camera.updateProjectionMatrix();
             renderer.setSize(w, h);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
         }
         window.addEventListener('resize', onResize);
+        // 移动端旋转屏幕时也要更新
+        window.addEventListener('orientationchange', () => {
+            setTimeout(onResize, 200);
+        });
 
         // ============================================================
         //  16. 动画循环
@@ -1632,7 +1913,7 @@
 
         let lastEFieldVelocity = 0;
         let eFieldFrameSkip = 0;
-        const EFIELD_FRAME_SKIP = 6;
+        const EFIELD_FRAME_SKIP = isMobile ? 10 : 6;
 
         let smoothedVelocity = 0;
         let animationId = null;
@@ -1645,7 +1926,6 @@
 
             const delta = Math.min(clock.getDelta(), 0.1);
 
-            // ---- 暂停时：冻结所有运动 ----
             if (isPaused) {
                 magnetGroup.position.z = frozenTargetZ;
                 targetMagnetZ = frozenTargetZ;
@@ -1657,8 +1937,7 @@
                 return;
             }
 
-            // ---- 正常运行 ----
-            if (autoMove && !isDragging) {
+            if (autoMove && !isDraggingMagnet && !touchDragActive) {
                 const step = AUTO_BASE_SPEED * autoSpeed * delta;
                 autoPos += autoDir * step;
                 if (autoPos >= AUTO_AMPLITUDE) {
@@ -1736,10 +2015,16 @@
                 animationId = null;
             }
 
-            canvas.removeEventListener('pointerdown', onPointerDown);
-            window.removeEventListener('pointermove', onPointerMove);
-            window.removeEventListener('pointerup', onPointerUp);
-            window.removeEventListener('pointercancel', onPointerCancel);
+            if (touchDragTimer) clearTimeout(touchDragTimer);
+
+            canvas.removeEventListener('pointerdown', onPointerDownDesktop);
+            window.removeEventListener('pointermove', onPointerMoveDesktop);
+            window.removeEventListener('pointerup', onPointerUpDesktop);
+            window.removeEventListener('pointercancel', onPointerUpDesktop);
+            canvas.removeEventListener('touchstart', onTouchStart);
+            canvas.removeEventListener('touchmove', onTouchMove);
+            canvas.removeEventListener('touchend', onTouchEnd);
+            canvas.removeEventListener('touchcancel', onTouchEnd);
             window.removeEventListener('keydown', onKeyDown);
             window.removeEventListener('resize', onResize);
             document.removeEventListener('visibilitychange', onVisibilityChange);
@@ -1791,16 +2076,17 @@
 
         animate();
 
-        console.log('%c⚡ 法拉第电磁感应 · 涡旋电场方向已修正',
+        console.log('%c⚡ 法拉第电磁感应 · 移动端已优化',
             'color:#ffaa00; font-weight:bold; font-size:14px;');
 
     } catch (err) {
         console.error('初始化失败：', err);
-        const errEl = document.getElementById('loading-err');
-        if (errEl) {
-            errEl.textContent = '初始化失败：' + err.message;
+        if (loadingErr) {
+            loadingErr.textContent = '初始化失败：' + err.message;
         }
-        if (loadingEl) loadingEl.style.display = 'block';
+        if (loadingStage) {
+            loadingStage.textContent = '加载失败';
+        }
     }
     </script>
 </body>

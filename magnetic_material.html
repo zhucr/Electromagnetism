@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>介质磁化 · 顺磁性与抗磁性 · 真3D分子电流取向</title>
+    <style>
+        :root {
+            --ahnu-blue: #003d7a;
+            --ahnu-gold: #c9a227;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', 'PingFang SC', Roboto, system-ui, -apple-system, sans-serif;
+            background: #0b1219;
+            color: #e8edf3;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            background: linear-gradient(90deg, var(--ahnu-blue) 0%, #0056a3 100%);
+            color: white;
+            padding: 0 40px;
+            display: flex;
+            align-items: center;
+            height: 64px;
+            box-shadow: 0 4px 20px rgba(0, 61, 122, 0.25);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            flex-shrink: 0;
+        }
+        .header h1 { font-size: 18px; font-weight: 700; letter-spacing: 2px; }
+        .header .back {
+            margin-left: auto;
+            color: white;
+            text-decoration: none;
+            font-size: 13px;
+            opacity: 0.85;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: opacity 0.2s;
+        }
+        .header .back:hover { opacity: 1; }
+        #app {
+            display: flex;
+            flex: 1;
+            width: 100%;
+            background: rgba(18, 28, 40, 0.75);
+            backdrop-filter: blur(6px);
+            overflow: hidden;
+        }
+        #canvas-wrap {
+            flex: 1;
+            position: relative;
+            background: #0a0f16;
+            overflow: hidden;
+            display: flex;
+        }
+        .scene-container {
+            width: 50%;
+            height: 100%;
+            position: relative;
+        }
+        #containerNoField { border-right: 1px solid rgba(255, 255, 255, 0.08); }
+        .scene-container canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .canvas-label {
+            position: absolute;
+            top: 16px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #b6d0e8;
+            letter-spacing: 1px;
+            pointer-events: none;
+            user-select: none;
+            background: rgba(0, 0, 0, 0.45);
+            padding: 4px 16px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            z-index: 5;
+        }
+        #labelNoField { left: 20px; }
+        #labelWithField { left: calc(50% + 20px); }
+        #coordinate-info {
+            position: absolute;
+            bottom: 16px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(4px);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            color: #a0b8d0;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            pointer-events: none;
+            user-select: none;
+            z-index: 5;
+        }
+        #panel {
+            width: 310px;
+            min-width: 310px;
+            padding: 22px 20px 26px;
+            background: rgba(12, 20, 30, 0.85);
+            backdrop-filter: blur(12px);
+            border-left: 1px solid rgba(255, 255, 255, 0.05);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        #panel::-webkit-scrollbar { width: 4px; }
+        #panel::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 8px; }
+        .panel-title {
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            background: linear-gradient(135deg, #b0d0ff, #7a9eff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .section {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 14px;
+            padding: 14px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            transition: border-color 0.2s;
+        }
+        .section:hover { border-color: rgba(255, 255, 255, 0.08); }
+        .section-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #9ab0cc;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .section-label .badge {
+            font-size: 10px;
+            background: rgba(255, 255, 255, 0.06);
+            padding: 0 10px;
+            border-radius: 12px;
+            color: #6a8aaa;
+        }
+        .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+        .btn {
+            flex: 1;
+            min-width: 60px;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #e8edf3;
+            background: rgba(255, 255, 255, 0.06);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            letter-spacing: 0.3px;
+            border: 1px solid transparent;
+        }
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        .btn:active { transform: scale(0.97); }
+        .btn-primary {
+            background: linear-gradient(135deg, #2a4a7a, #1a3560);
+            border-color: rgba(255, 255, 255, 0.08);
+        }
+        .btn-primary:hover { background: linear-gradient(135deg, #3a5a8a, #2a4570); }
+        .btn-secondary { background: rgba(255, 255, 255, 0.04); }
+        .btn-secondary:hover { background: rgba(255, 255, 255, 0.10); }
+        .btn-active {
+            background: linear-gradient(135deg, #3a7aaa, #2a5a8a);
+            border-color: rgba(100, 180, 255, 0.35);
+            box-shadow: 0 0 14px rgba(60, 140, 255, 0.2);
+        }
+        .slider-group { margin-top: 6px; }
+        .slider-group label {
+            font-size: 12px;
+            color: #7a90aa;
+            display: flex;
+            justify-content: space-between;
+        }
+        .slider-group label span { color: #b0c8e0; font-weight: 500; }
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 4px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.10);
+            outline: none;
+            margin: 6px 0 4px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #5a8ad0, #3a6aaa);
+            cursor: pointer;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+            transition: 0.15s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.1); }
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #5a8ad0, #3a6aaa);
+            cursor: pointer;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+        }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .info-item {
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 8px;
+            padding: 8px 12px;
+            text-align: center;
+        }
+        .info-item .label {
+            font-size: 11px;
+            color: #6a80a0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .info-item .value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #d0e4ff;
+            margin-top: 2px;
+            font-variant-numeric: tabular-nums;
+        }
+        .info-item .value.warm { color: #f0c060; }
+        .info-item .value.cool { color: #70b0f0; }
+        .legend-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 16px;
+            margin-top: 4px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #9ab0cc;
+        }
+        .legend-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .legend-line {
+            width: 20px;
+            height: 3px;
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
+        .type-note {
+            font-size: 11px;
+            color: #6a8aaa;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 6px 10px;
+            margin-top: 8px;
+            border-left: 2px solid rgba(100, 180, 255, 0.3);
+            line-height: 1.6;
+        }
+        .type-note strong { color: #b0d0f0; }
+        @media (max-width: 900px) {
+            #app { flex-direction: column; height: auto; width: 100vw; backdrop-filter: none; }
+            #panel {
+                width: 100%;
+                min-width: unset;
+                max-height: 45vh;
+                border-left: none;
+                border-top: 1px solid rgba(255, 255, 255, 0.05);
+                padding: 16px;
+            }
+            #canvas-wrap { height: 55vh; }
+        }
+        @media (max-width: 500px) {
+            #panel { padding: 12px; gap: 10px; }
+            .section { padding: 10px 12px; }
+            .btn { font-size: 12px; padding: 6px 10px; min-width: 50px; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <h1>⚡ 介质磁化 · 顺磁性与抗磁性 · 真3D分子电流取向</h1>
+        <a class="back" href="index.html">← 返回实验大厅</a>
+    </header>
+
+    <div id="app">
+        <div id="canvas-wrap">
+            <div class="scene-container" id="containerNoField"></div>
+            <div class="scene-container" id="containerWithField"></div>
+            <div class="canvas-label" id="labelNoField">无外加磁场</div>
+            <div class="canvas-label" id="labelWithField">外加磁场</div>
+            <div id="coordinate-info">磁场: 无 (B = 0)</div>
+        </div>
+
+        <div id="panel">
+            <div class="panel-title">🧲 介质磁化 · 3D</div>
+
+            <!-- ★ 介质类型选择 -->
+            <div class="section">
+                <div class="section-label">
+                    ⚛️ 介质类型
+                    <span class="badge" id="typeBadge">抗磁性</span>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-active" id="btnDia" onclick="setMagneticType('diamagnetic')">🔹 抗磁性</button>
+                    <button class="btn btn-secondary" id="btnPara" onclick="setMagneticType('paramagnetic')">🔸 顺磁性</button>
+                </div>
+                <div class="type-note" id="typeNote">
+                    <strong>抗磁性</strong>：分子电流环在外磁场中感应出与外场<strong>相反</strong>的磁矩，取向趋于与外场反向，磁化强度 M &lt; 0。
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-label">
+                    🧲 外磁场强度 B
+                    <span class="badge" id="fieldValue">无</span>
+                </div>
+                <div class="slider-group">
+                    <label>磁感应强度 <span id="fieldDisplay">0.0</span></label>
+                    <input type="range" id="fieldSlider" min="0" max="100" step="1" value="0" />
+                </div>
+                <div style="font-size:11px; color:#6a8aaa; background:rgba(0,0,0,0.2); border-radius:8px; padding:6px 10px; margin-top:6px; border-left:2px solid rgba(255,90,90,0.3);">
+                    🧲 磁场方向：垂直纸面向外（Z轴正方向）
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-label">
+                    🧬 分子电流管理
+                    <span class="badge" id="particleCount">32 个</span>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="addMolecule()">＋ 添加</button>
+                    <button class="btn btn-secondary" onclick="removeMolecule()">✕ 删除</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-label">
+                    🌡️ 热运动强度
+                    <span class="badge" id="thermalValue">中</span>
+                </div>
+                <div class="slider-group">
+                    <label>温度 T <span id="thermalDisplay">1.0</span></label>
+                    <input type="range" id="thermalSlider" min="0" max="3.0" step="0.1" value="1.0" />
+                </div>
+                <div style="font-size:11px; color:#6a8aaa; background:rgba(0,0,0,0.2); border-radius:8px; padding:6px 10px; margin-top:6px; border-left:2px solid rgba(255,120,80,0.3);">
+                    🔥 热运动使分子取向缓慢偏转，位置随机漂移
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-label">🎨 外观设置</div>
+                <div class="slider-group">
+                    <label>分子环大小 <span id="sizeDisplay">0.50</span></label>
+                    <input type="range" id="sizeSlider" min="0.2" max="1.0" step="0.05" value="0.5" />
+                </div>
+                <div class="slider-group">
+                    <label>磁化视觉强度 <span id="alignDisplay">1.0</span></label>
+                    <input type="range" id="alignSlider" min="0.2" max="2.0" step="0.1" value="1.0" />
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-label">📷 视角</div>
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="resetView()">⟲ 默认视角</button>
+                    <button class="btn btn-secondary" onclick="toggleAutoRotate()" id="rotateBtn">🔄 自动旋转</button>
+                </div>
+                <div style="font-size:11px; color:#6a8aaa; margin-top:6px;">鼠标拖动可自由旋转视角</div>
+            </div>
+
+            <div class="section">
+                <div class="section-label">⏯️ 仿真控制</div>
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="resetSimulation()">⟲ 重置</button>
+                    <button class="btn btn-secondary" onclick="toggleAnimation()" id="pauseBtn">⏸ 暂停</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-label">📊 磁化信息</div>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="label">取向有序度</div>
+                        <div class="value cool" id="orderDegree">0.00</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">磁化强度 M</div>
+                        <div class="value warm" id="magnetization">0.00</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section" style="border-color:rgba(255,255,255,0.03);">
+                <div class="section-label" style="margin-bottom:4px;">🎨 图例</div>
+                <div class="legend-grid">
+                    <span class="legend-item"><span class="legend-dot" style="background:#70b0f0;"></span> 分子电流环</span>
+                    <span class="legend-item"><span class="legend-dot" style="background:#ff5a5a;"></span> 外磁场方向</span>
+                </div>
+                <div class="legend-grid" style="margin-top:6px;">
+                    <span class="legend-item"><span class="legend-line" style="background:linear-gradient(90deg,#1a4a7a,#70b0f0);"></span> 取向一致</span>
+                    <span class="legend-item"><span class="legend-line" style="background:rgba(255,120,80,0.6);"></span> 热运动扰动</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        // ================================================================
+        // 1. 全局常量
+        // ================================================================
+        const BOX_W = 8;
+        const BOX_H = 6;
+        const BOX_D = 4;
+        const MAX_MOLECULES = 48;
+        const MIN_MOLECULES = 8;
+
+        let fieldValue = 0;
+        let thermalStrength = 1.0;
+        let alignScale = 1.0;
+        let moleculeSize = 0.5;
+
+        // ★ 磁性类型: 'diamagnetic' (抗磁, 默认) 或 'paramagnetic' (顺磁)
+        let magneticType = 'diamagnetic';
+
+        let isAnimating = true;
+        let autoRotate = false;
+
+        // ================================================================
+        // 2. 分子数据
+        // ================================================================
+        let moleculesNoField = [];
+        let moleculesWithField = [];
+
+        function seededRandom(seed) {
+            let x = Math.sin(seed) * 10000;
+            return x - Math.floor(x);
+        }
+
+        function generateMolecules(count) {
+            moleculesNoField = [];
+            moleculesWithField = [];
+            const marginX = BOX_W / 2 - 0.6;
+            const marginY = BOX_H / 2 - 0.6;
+            const marginZ = BOX_D / 2 - 0.6;
+
+            for (let i = 0; i < count; i++) {
+                const x = (seededRandom(i * 7 + 2) * 2 - 1) * marginX;
+                const y = (seededRandom(i * 13 + 5) * 2 - 1) * marginY;
+                const z = (seededRandom(i * 17 + 3) * 2 - 1) * marginZ;
+                const initTheta = seededRandom(i * 23 + 9) * Math.PI;
+                const initPhi = seededRandom(i * 31 + 13) * Math.PI * 2;
+                const vAngle = seededRandom(i * 41 + 17) * Math.PI * 2;
+
+                moleculesNoField.push({
+                    id: i + 1,
+                    x, y, z,
+                    theta: initTheta,
+                    phi: initPhi,
+                    thermalOmegaTheta: (seededRandom(i * 53 + 23) - 0.5) * 0.02,
+                    thermalOmegaPhi: (seededRandom(i * 59 + 29) - 0.5) * 0.03,
+                    vx: Math.cos(vAngle),
+                    vy: Math.sin(vAngle)
+                });
+
+                moleculesWithField.push({
+                    id: i + 1,
+                    x, y, z,
+                    theta: initTheta,
+                    phi: initPhi,
+                    thermalOmegaTheta: (seededRandom(i * 53 + 23) - 0.5) * 0.02,
+                    thermalOmegaPhi: (seededRandom(i * 59 + 29) - 0.5) * 0.03,
+                    vx: Math.cos(vAngle),
+                    vy: Math.sin(vAngle)
+                });
+            }
+        }
+
+        // ================================================================
+        // 3. 物理更新
+        // ================================================================
+        function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+        function updatePhysics() {
+            const B = fieldValue / 100;
+            const marginX = BOX_W / 2 - 0.4;
+            const marginY = BOX_H / 2 - 0.4;
+
+            // ★ 根据磁性类型决定目标取向角:
+            //   抗磁性: θ → π (磁矩与外场反向)
+            //   顺磁性: θ → 0 (磁矩与外场同向)
+            const targetTheta = (magneticType === 'diamagnetic') ? Math.PI : 0;
+
+            moleculesNoField.forEach((mol) => {
+                if (thermalStrength > 0.01) {
+                    const speed = thermalStrength * 0.015;
+                    const noise = thermalStrength * 0.3;
+                    const angle = Math.atan2(mol.vy, mol.vx);
+                    const newAngle = angle + (Math.random() - 0.5) * noise;
+                    mol.vx = Math.cos(newAngle);
+                    mol.vy = Math.sin(newAngle);
+                    mol.x += mol.vx * speed;
+                    mol.y += mol.vy * speed;
+
+                    if (mol.x < -marginX) { mol.x = -marginX; mol.vx = Math.abs(mol.vx); }
+                    if (mol.x > marginX) { mol.x = marginX; mol.vx = -Math.abs(mol.vx); }
+                    if (mol.y < -marginY) { mol.y = -marginY; mol.vy = Math.abs(mol.vy); }
+                    if (mol.y > marginY) { mol.y = marginY; mol.vy = -Math.abs(mol.vy); }
+
+                    const maxOmega = thermalStrength * 0.025;
+                    mol.thermalOmegaTheta += (Math.random() - 0.5) * thermalStrength * 0.003;
+                    mol.thermalOmegaTheta = clamp(mol.thermalOmegaTheta, -maxOmega, maxOmega);
+                    mol.theta += mol.thermalOmegaTheta;
+
+                    if (mol.theta < 0) { mol.theta = 0; mol.thermalOmegaTheta = Math.abs(mol.thermalOmegaTheta); }
+                    if (mol.theta > Math.PI) { mol.theta = Math.PI; mol.thermalOmegaTheta = -Math.abs(mol.thermalOmegaTheta); }
+
+                    const maxOmegaPhi = thermalStrength * 0.035;
+                    mol.thermalOmegaPhi += (Math.random() - 0.5) * thermalStrength * 0.004;
+                    mol.thermalOmegaPhi = clamp(mol.thermalOmegaPhi, -maxOmegaPhi, maxOmegaPhi);
+                    mol.phi += mol.thermalOmegaPhi;
+                    while (mol.phi > Math.PI * 2) mol.phi -= Math.PI * 2;
+                    while (mol.phi < 0) mol.phi += Math.PI * 2;
+                }
+            });
+
+            moleculesWithField.forEach((mol) => {
+                if (thermalStrength > 0.01) {
+                    const speed = thermalStrength * 0.015;
+                    const noise = thermalStrength * 0.3;
+                    const angle = Math.atan2(mol.vy, mol.vx);
+                    const newAngle = angle + (Math.random() - 0.5) * noise;
+                    mol.vx = Math.cos(newAngle);
+                    mol.vy = Math.sin(newAngle);
+                    mol.x += mol.vx * speed;
+                    mol.y += mol.vy * speed;
+
+                    if (mol.x < -marginX) { mol.x = -marginX; mol.vx = Math.abs(mol.vx); }
+                    if (mol.x > marginX) { mol.x = marginX; mol.vx = -Math.abs(mol.vx); }
+                    if (mol.y < -marginY) { mol.y = -marginY; mol.vy = Math.abs(mol.vy); }
+                    if (mol.y > marginY) { mol.y = marginY; mol.vy = -Math.abs(mol.vy); }
+
+                    const stability = 1 - B * 0.85;
+                    const maxOmega = thermalStrength * 0.025 * stability;
+                    mol.thermalOmegaTheta += (Math.random() - 0.5) * thermalStrength * 0.003 * stability;
+                    mol.thermalOmegaTheta = clamp(mol.thermalOmegaTheta, -maxOmega, maxOmega);
+
+                    const maxOmegaPhi = thermalStrength * 0.03 * (1 - B * 0.5);
+                    mol.thermalOmegaPhi += (Math.random() - 0.5) * thermalStrength * 0.004 * (1 - B * 0.5);
+                    mol.thermalOmegaPhi = clamp(mol.thermalOmegaPhi, -maxOmegaPhi, maxOmegaPhi);
+
+                    mol.theta += mol.thermalOmegaTheta;
+                    mol.phi += mol.thermalOmegaPhi;
+
+                    if (mol.theta < 0) { mol.theta = 0; mol.thermalOmegaTheta = Math.abs(mol.thermalOmegaTheta); }
+                    if (mol.theta > Math.PI) { mol.theta = Math.PI; mol.thermalOmegaTheta = -Math.abs(mol.thermalOmegaTheta); }
+
+                    while (mol.phi > Math.PI * 2) mol.phi -= Math.PI * 2;
+                    while (mol.phi < 0) mol.phi += Math.PI * 2;
+                }
+
+                // ★ 磁场取向: 抗磁 → θ = π; 顺磁 → θ = 0
+                if (B > 0.01) {
+                    const alignRate = B * alignScale * 0.06;
+                    mol.theta += (targetTheta - mol.theta) * alignRate;
+                    mol.theta = clamp(mol.theta, 0, Math.PI);
+                }
+            });
+        }
+
+        // ================================================================
+        // 4. 创建场景
+        // ================================================================
+        function createScene(containerId, hasField) {
+            const container = document.getElementById(containerId);
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x080e16);
+
+            const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+            camera.position.set(8, 6, 12);
+            camera.lookAt(0, 0, 0);
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            scene.add(new THREE.AmbientLight(0xffffff, 0.35));
+            const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.5);
+            dirLight1.position.set(5, 10, 7);
+            scene.add(dirLight1);
+            const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.3);
+            dirLight2.position.set(-5, -5, -7);
+            scene.add(dirLight2);
+            const dirLight3 = new THREE.DirectionalLight(0x88aaff, 0.25);
+            dirLight3.position.set(0, 0, 10);
+            scene.add(dirLight3);
+
+            const boxGeometry = new THREE.BoxGeometry(BOX_W, BOX_H, BOX_D);
+            const boxEdges = new THREE.EdgesGeometry(boxGeometry);
+            const boxLines = new THREE.LineSegments(
+                boxEdges,
+                new THREE.LineBasicMaterial({ color: 0x3a6a9a, transparent: true, opacity: 0.5 })
+            );
+            scene.add(boxLines);
+
+            const boxMat = new THREE.MeshPhongMaterial({
+                color: 0x1a3a5a,
+                transparent: true,
+                opacity: 0.06,
+                side: THREE.DoubleSide
+            });
+            const boxMesh = new THREE.Mesh(boxGeometry, boxMat);
+            scene.add(boxMesh);
+
+            const fieldGroup = new THREE.Group();
+            if (hasField) {
+                const shaftGeo = new THREE.CylinderGeometry(0.06, 0.06, BOX_H * 1.3, 12);
+                const shaftMat = new THREE.MeshPhongMaterial({ color: 0xff5a5a, emissive: 0x551010 });
+                const shaft = new THREE.Mesh(shaftGeo, shaftMat);
+                shaft.position.y = BOX_H * 0.65 - BOX_H / 2;
+                const headGeo = new THREE.ConeGeometry(0.2, 0.5, 12);
+                const headMat = new THREE.MeshPhongMaterial({ color: 0xff5a5a, emissive: 0x551010 });
+                const head = new THREE.Mesh(headGeo, headMat);
+                head.position.y = BOX_H * 1.3 - BOX_H / 2 + 0.25;
+                fieldGroup.add(shaft);
+                fieldGroup.add(head);
+                fieldGroup.position.set(-BOX_W/2 - 0.8, 0, 0);
+            }
+            scene.add(fieldGroup);
+
+            const moleculesGroup = new THREE.Group();
+            scene.add(moleculesGroup);
+
+            const controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.08;
+            controls.autoRotate = false;
+            controls.autoRotateSpeed = 1.0;
+            controls.target.set(0, 0, 0);
+            controls.minDistance = 5;
+            controls.maxDistance = 30;
+
+            return {
+                scene, camera, renderer, controls, moleculesGroup,
+                container, hasField, fieldGroup,
+                moleculeMeshes: []
+            };
+        }
+
+        // ================================================================
+        // 5. 创建分子 Mesh
+        // ================================================================
+        function createMoleculeMesh(size) {
+            const group = new THREE.Group();
+
+            const cylinderGeo = new THREE.CylinderGeometry(
+                size, size, size * 0.4, 32, 1, false
+            );
+            const cylinderMat = new THREE.MeshLambertMaterial({
+                color: 0x4a86b8,
+                emissive: 0x102030,
+                transparent: false,
+                side: THREE.DoubleSide
+            });
+            const cylinder = new THREE.Mesh(cylinderGeo, cylinderMat);
+            group.add(cylinder);
+
+            const rimGeo = new THREE.TorusGeometry(size * 0.98, size * 0.06, 8, 40);
+            const rimMat = new THREE.MeshLambertMaterial({
+                color: 0x2a6a9a,
+                emissive: 0x0a1a2a,
+                transparent: false,
+                side: THREE.DoubleSide
+            });
+            const rimTop = new THREE.Mesh(rimGeo, rimMat);
+            rimTop.rotation.x = Math.PI / 2;
+            rimTop.position.y = size * 0.2;
+            group.add(rimTop);
+
+            const rimBottom = new THREE.Mesh(rimGeo, rimMat);
+            rimBottom.rotation.x = Math.PI / 2;
+            rimBottom.position.y = -size * 0.2;
+            group.add(rimBottom);
+
+            const arrowHelper = new THREE.ArrowHelper(
+                new THREE.Vector3(0, 1, 0),
+                new THREE.Vector3(0, 0, 0),
+                size * 2.0,
+                0xa0c8e8,
+                size * 0.4,
+                size * 0.25
+            );
+            group.add(arrowHelper);
+
+            const centerSphere = new THREE.Mesh(
+                new THREE.SphereGeometry(size * 0.1, 8, 8),
+                new THREE.MeshBasicMaterial({ color: 0xd0e8ff })
+            );
+            group.add(centerSphere);
+
+            return { group, cylinder, arrowHelper };
+        }
+
+        // ================================================================
+        // 6. 更新分子 Mesh
+        // ================================================================
+        function setGroupNormal(group, n) {
+            const defaultAxis = new THREE.Vector3(0, 1, 0);
+            const dot = defaultAxis.dot(n);
+
+            if (dot > 0.9999) {
+                group.quaternion.identity();
+            } else if (dot < -0.9999) {
+                group.quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI);
+            } else {
+                const quaternion = new THREE.Quaternion().setFromUnitVectors(defaultAxis, n);
+                group.quaternion.copy(quaternion);
+            }
+        }
+
+        function updateMoleculeMeshes(sceneObj, molecules) {
+            const { moleculesGroup, moleculeMeshes } = sceneObj;
+
+            while (moleculeMeshes.length < molecules.length) {
+                const m = createMoleculeMesh(moleculeSize);
+                moleculesGroup.add(m.group);
+                moleculeMeshes.push(m);
+            }
+            while (moleculeMeshes.length > molecules.length) {
+                const m = moleculeMeshes.pop();
+                moleculesGroup.remove(m.group);
+            }
+
+            for (let i = 0; i < molecules.length; i++) {
+                const mol = molecules[i];
+                const mesh = moleculeMeshes[i];
+
+                mesh.group.position.set(mol.x, mol.y, mol.z);
+
+                const sinTheta = Math.sin(mol.theta);
+                const cosTheta = Math.cos(mol.theta);
+                const sinPhi = Math.sin(mol.phi);
+                const cosPhi = Math.cos(mol.phi);
+
+                const n = new THREE.Vector3(
+                    sinTheta * cosPhi,
+                    cosTheta,
+                    sinTheta * sinPhi
+                ).normalize();
+
+                setGroupNormal(mesh.group, n);
+            }
+        }
+
+        // ================================================================
+        // 7. 初始化
+        // ================================================================
+        const sceneNoField = createScene('containerNoField', false);
+        const sceneWithField = createScene('containerWithField', true);
+
+        generateMolecules(32);
+        updateCount();
+
+        updateMoleculeMeshes(sceneNoField, moleculesNoField);
+        updateMoleculeMeshes(sceneWithField, moleculesWithField);
+
+        // ================================================================
+        // 8. 渲染循环
+        // ================================================================
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (isAnimating) {
+                updatePhysics();
+            }
+
+            updateMoleculeMeshes(sceneNoField, moleculesNoField);
+            updateMoleculeMeshes(sceneWithField, moleculesWithField);
+
+            sceneNoField.controls.autoRotate = autoRotate;
+            sceneWithField.controls.autoRotate = autoRotate;
+
+            sceneNoField.controls.update();
+            sceneWithField.controls.update();
+
+            sceneNoField.renderer.render(sceneNoField.scene, sceneNoField.camera);
+            sceneWithField.renderer.render(sceneWithField.scene, sceneWithField.camera);
+
+            updateInfoDisplay();
+        }
+
+        // ================================================================
+        // 9. 信息显示
+        // ================================================================
+        function updateInfoDisplay() {
+            const B = fieldValue / 100;
+
+            // ★ 取向有序度: 顺磁为 <cosθ>, 抗磁为 -<cosθ> (反向对齐为正)
+            let orderSum = 0;
+            moleculesWithField.forEach(m => {
+                orderSum += Math.cos(m.theta);
+            });
+            const avgCos = moleculesWithField.length > 0 ? (orderSum / moleculesWithField.length) : 0;
+
+            // 抗磁性: 磁矩与外场反向, 有序度取 -avgCos (因为 θ→π, cosθ→-1)
+            // 顺磁性: 磁矩与外场同向, 有序度取 +avgCos (因为 θ→0, cosθ→+1)
+            const orderDegree = (magneticType === 'diamagnetic') ? -avgCos : avgCos;
+
+            // ★ 磁化强度 M:
+            //   顺磁性 M > 0 (与外场同向)
+            //   抗磁性 M < 0 (与外场反向)
+            //   乘以磁场强度 B 表示磁化程度
+            const signedM = orderDegree * B;
+
+            const orderEl = document.getElementById('orderDegree');
+            const magEl = document.getElementById('magnetization');
+            if (orderEl) orderEl.textContent = Math.abs(orderDegree).toFixed(2);
+
+            if (magEl) {
+                // 显示带符号的磁化强度
+                let mText = signedM.toFixed(2);
+                if (signedM > 0) mText = '+' + mText;
+                magEl.textContent = mText;
+                // 顺磁: 暖色; 抗磁: 冷色
+                magEl.style.color = (magneticType === 'diamagnetic') ? '#70b0f0' : '#f0c060';
+            }
+
+            const coordInfo = document.getElementById('coordinate-info');
+            if (coordInfo) {
+                const fieldText = fieldValue > 5 ? `B = ${fieldValue}%` : '无 (B = 0)';
+                const typeText = magneticType === 'diamagnetic' ? '抗磁' : '顺磁';
+                coordInfo.textContent = `磁场: ${fieldText} · ${typeText} · 热运动 T=${thermalStrength.toFixed(1)}`;
+            }
+
+            const fieldValueLabel = document.getElementById('fieldValue');
+            if (fieldValueLabel) {
+                if (fieldValue < 5) fieldValueLabel.textContent = '无';
+                else if (fieldValue < 40) fieldValueLabel.textContent = '弱';
+                else if (fieldValue < 70) fieldValueLabel.textContent = '中';
+                else fieldValueLabel.textContent = '强';
+            }
+        }
+
+        // ================================================================
+        // 10. 交互
+        // ================================================================
+        document.getElementById('fieldSlider').addEventListener('input', (e) => {
+            fieldValue = parseInt(e.target.value, 10);
+            document.getElementById('fieldDisplay').textContent = fieldValue.toFixed(1);
+            updateFieldArrow();
+        });
+
+        function updateFieldArrow() {
+            if (sceneWithField.fieldGroup) {
+                const B = fieldValue / 100;
+                sceneWithField.fieldGroup.visible = fieldValue > 2;
+                sceneWithField.fieldGroup.traverse((obj) => {
+                    if (obj.material) {
+                        if (obj.material.transparent === false) {
+                            obj.material.transparent = true;
+                        }
+                        obj.material.opacity = 0.3 + B * 0.7;
+                    }
+                });
+            }
+        }
+
+        // ★ 磁性类型切换
+        function setMagneticType(type) {
+            magneticType = type;
+
+            const btnDia = document.getElementById('btnDia');
+            const btnPara = document.getElementById('btnPara');
+            const typeBadge = document.getElementById('typeBadge');
+            const typeNote = document.getElementById('typeNote');
+
+            if (type === 'diamagnetic') {
+                btnDia.className = 'btn btn-active';
+                btnPara.className = 'btn btn-secondary';
+                typeBadge.textContent = '抗磁性';
+                typeNote.innerHTML = '<strong>抗磁性</strong>：分子电流环在外磁场中感应出与外场<strong>相反</strong>的磁矩，取向趋于与外场反向，磁化强度 M &lt; 0。';
+            } else {
+                btnDia.className = 'btn btn-secondary';
+                btnPara.className = 'btn btn-active';
+                typeBadge.textContent = '顺磁性';
+                typeNote.innerHTML = '<strong>顺磁性</strong>：分子电流环的固有磁矩在外磁场中趋于与外场<strong>同向</strong>排列，磁化强度 M &gt; 0。';
+            }
+        }
+
+        document.getElementById('thermalSlider').addEventListener('input', (e) => {
+            thermalStrength = parseFloat(e.target.value);
+            document.getElementById('thermalDisplay').textContent = thermalStrength.toFixed(1);
+            const el = document.getElementById('thermalValue');
+            const absT = thermalStrength;
+            if (absT < 0.3) el.textContent = '极低';
+            else if (absT < 0.8) el.textContent = '低';
+            else if (absT < 1.5) el.textContent = '中';
+            else if (absT < 2.2) el.textContent = '高';
+            else el.textContent = '极高';
+        });
+
+        document.getElementById('sizeSlider').addEventListener('input', (e) => {
+            moleculeSize = parseFloat(e.target.value);
+            document.getElementById('sizeDisplay').textContent = moleculeSize.toFixed(2);
+            rebuildAllMolecules();
+        });
+
+        function rebuildAllMolecules() {
+            [sceneNoField, sceneWithField].forEach(s => {
+                s.moleculeMeshes.forEach(m => s.moleculesGroup.remove(m.group));
+                s.moleculeMeshes = [];
+            });
+            updateMoleculeMeshes(sceneNoField, moleculesNoField);
+            updateMoleculeMeshes(sceneWithField, moleculesWithField);
+        }
+
+        document.getElementById('alignSlider').addEventListener('input', (e) => {
+            alignScale = parseFloat(e.target.value);
+            document.getElementById('alignDisplay').textContent = alignScale.toFixed(1);
+        });
+
+        function updateCount() {
+            const el = document.getElementById('particleCount');
+            if (el) el.textContent = moleculesWithField.length + ' 个';
+        }
+
+        function addMolecule() {
+            if (moleculesWithField.length >= MAX_MOLECULES) {
+                alert('最多 ' + MAX_MOLECULES + ' 个分子');
+                return;
+            }
+            const id = moleculesWithField.length + 1;
+            const marginX = BOX_W / 2 - 0.6;
+            const marginY = BOX_H / 2 - 0.6;
+            const marginZ = BOX_D / 2 - 0.6;
+            const x = (Math.random() * 2 - 1) * marginX;
+            const y = (Math.random() * 2 - 1) * marginY;
+            const z = (Math.random() * 2 - 1) * marginZ;
+            const initTheta = Math.random() * Math.PI;
+            const initPhi = Math.random() * Math.PI * 2;
+            const vAngle = Math.random() * Math.PI * 2;
+
+            moleculesNoField.push({
+                id, x, y, z,
+                theta: initTheta, phi: initPhi,
+                thermalOmegaTheta: (Math.random() - 0.5) * 0.02,
+                thermalOmegaPhi: (Math.random() - 0.5) * 0.03,
+                vx: Math.cos(vAngle), vy: Math.sin(vAngle)
+            });
+            moleculesWithField.push({
+                id, x, y, z,
+                theta: initTheta, phi: initPhi,
+                thermalOmegaTheta: (Math.random() - 0.5) * 0.02,
+                thermalOmegaPhi: (Math.random() - 0.5) * 0.03,
+                vx: Math.cos(vAngle), vy: Math.sin(vAngle)
+            });
+            updateCount();
+            updateMoleculeMeshes(sceneNoField, moleculesNoField);
+            updateMoleculeMeshes(sceneWithField, moleculesWithField);
+        }
+
+        function removeMolecule() {
+            if (moleculesWithField.length <= MIN_MOLECULES) {
+                alert('至少保留 ' + MIN_MOLECULES + ' 个分子');
+                return;
+            }
+            moleculesNoField.pop();
+            moleculesWithField.pop();
+            updateCount();
+            updateMoleculeMeshes(sceneNoField, moleculesNoField);
+            updateMoleculeMeshes(sceneWithField, moleculesWithField);
+        }
+
+        function resetSimulation() {
+            fieldValue = 0;
+            document.getElementById('fieldSlider').value = 0;
+            document.getElementById('fieldDisplay').textContent = '0.0';
+            updateFieldArrow();
+
+            thermalStrength = 1.0;
+            document.getElementById('thermalSlider').value = 1.0;
+            document.getElementById('thermalDisplay').textContent = '1.0';
+            document.getElementById('thermalValue').textContent = '中';
+
+            moleculeSize = 0.5;
+            document.getElementById('sizeSlider').value = 0.5;
+            document.getElementById('sizeDisplay').textContent = '0.50';
+
+            alignScale = 1.0;
+            document.getElementById('alignSlider').value = 1.0;
+            document.getElementById('alignDisplay').textContent = '1.0';
+
+            // ★ 重置时保持当前磁性类型，但默认抗磁性
+            setMagneticType('diamagnetic');
+
+            generateMolecules(32);
+            updateCount();
+            rebuildAllMolecules();
+        }
+
+        function toggleAnimation() {
+            isAnimating = !isAnimating;
+            document.getElementById('pauseBtn').textContent = isAnimating ? '⏸ 暂停' : '▶ 继续';
+        }
+
+        function resetView() {
+            [sceneNoField, sceneWithField].forEach(s => {
+                s.camera.position.set(8, 6, 12);
+                s.controls.target.set(0, 0, 0);
+                s.controls.update();
+            });
+        }
+
+        function toggleAutoRotate() {
+            autoRotate = !autoRotate;
+            document.getElementById('rotateBtn').textContent = autoRotate ? '⏸ 停止旋转' : '🔄 自动旋转';
+        }
+
+        window.addMolecule = addMolecule;
+        window.removeMolecule = removeMolecule;
+        window.resetSimulation = resetSimulation;
+        window.toggleAnimation = toggleAnimation;
+        window.resetView = resetView;
+        window.toggleAutoRotate = toggleAutoRotate;
+        window.setMagneticType = setMagneticType;
+
+        // ================================================================
+        // 11. 窗口大小
+        // ================================================================
+        window.addEventListener('resize', () => {
+            [sceneNoField, sceneWithField].forEach(s => {
+                const w = s.container.clientWidth;
+                const h = s.container.clientHeight;
+                s.camera.aspect = w / h;
+                s.camera.updateProjectionMatrix();
+                s.renderer.setSize(w, h);
+            });
+        });
+
+        // ================================================================
+        // 12. 启动
+        // ================================================================
+        animate();
+
+        console.log('🧲 介质磁化 · 顺磁/抗磁 | 默认抗磁性');
+    </script>
+</body>
+</html>

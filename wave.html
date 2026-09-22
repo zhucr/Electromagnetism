@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自由空间电磁波波动教学平台</title>
+    <style>
+        :root {
+            --ahnu-blue: #003d7a;
+            --ahnu-gold: #c9a227;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', 'PingFang SC', Roboto, system-ui, -apple-system, sans-serif;
+            background: #0b1219;
+            color: #e8edf3;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            background: linear-gradient(90deg, var(--ahnu-blue) 0%, #0056a3 100%);
+            color: white;
+            padding: 0 40px;
+            display: flex;
+            align-items: center;
+            height: 64px;
+            box-shadow: 0 4px 20px rgba(0, 61, 122, 0.25);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            flex-shrink: 0;
+        }
+        .header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 2px;
+        }
+        .header .back {
+            margin-left: auto;
+            color: white;
+            text-decoration: none;
+            font-size: 13px;
+            opacity: 0.85;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: opacity 0.2s;
+        }
+        .header .back:hover {
+            opacity: 1;
+        }
+        #app {
+            display: flex;
+            flex: 1;
+            width: 100%;
+            background: rgba(18, 28, 40, 0.75);
+            backdrop-filter: blur(6px);
+            overflow: hidden;
+        }
+        #canvas-wrap {
+            flex: 1;
+            position: relative;
+            background: #0a0f16;
+            overflow: hidden;
+        }
+        #canvas-wrap canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffaa00;
+            font-size: 1rem;
+            letter-spacing: 2px;
+            z-index: 999;
+            text-shadow: 0 0 15px rgba(255,170,0,0.5);
+        }
+        #info {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            background: rgba(10, 18, 28, 0.82);
+            color: #e8edf3;
+            padding: 14px 20px;
+            border-radius: 12px;
+            pointer-events: none;
+            z-index: 50;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.06);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+            max-width: 360px;
+        }
+        #info h1 {
+            margin: 0 0 6px;
+            font-size: 1.1rem;
+            letter-spacing: 0.5px;
+            color: #b0d0ff;
+        }
+        #info p {
+            margin: 4px 0;
+            font-size: 0.82rem;
+            line-height: 1.45;
+            opacity: 0.85;
+            color: #a0b8d0;
+        }
+        #info .e-color  { color: #ff7b7b; font-weight: 600; }
+        #info .b-color  { color: #5fb8ff; font-weight: 600; }
+        #info .hl       { color: #f0c060; font-weight: 600; }
+        #info .pos      { color: #88ff88; font-weight: 600; font-variant-numeric: tabular-nums; }
+        #info .approx-badge {
+            display: inline-block;
+            font-size: 10px;
+            padding: 1px 8px;
+            border-radius: 8px;
+            background: rgba(255, 170, 0, 0.15);
+            color: #ffaa00;
+            border: 1px solid rgba(255, 170, 0, 0.3);
+            margin-left: 6px;
+            font-weight: 600;
+        }
+
+        #speed-indicator {
+            position: absolute;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #f0c060;
+            font-size: 0.95rem;
+            font-weight: 700;
+            letter-spacing: 1.2px;
+            text-shadow: 0 0 12px rgba(240,192,96,0.5);
+            background: rgba(0,0,0,0.6);
+            padding: 6px 24px;
+            border-radius: 24px;
+            border: 1px solid rgba(240,192,96,0.3);
+            z-index: 50;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+            transition: color 0.25s;
+            pointer-events: none;
+        }
+
+        #panel {
+            width: 310px;
+            min-width: 310px;
+            padding: 22px 20px 26px;
+            background: rgba(12, 20, 30, 0.85);
+            backdrop-filter: blur(12px);
+            border-left: 1px solid rgba(255, 255, 255, 0.05);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        #panel::-webkit-scrollbar {
+            width: 4px;
+        }
+        #panel::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+        }
+        .panel-title {
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            background: linear-gradient(135deg, #b0d0ff, #7a9eff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .section {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 14px;
+            padding: 14px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            transition: border-color 0.2s;
+        }
+        .section:hover {
+            border-color: rgba(255, 255, 255, 0.08);
+        }
+        .section-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #9ab0cc;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .section-label .badge {
+            font-size: 10px;
+            background: rgba(255, 255, 255, 0.06);
+            padding: 0 10px;
+            border-radius: 12px;
+            color: #6a8aaa;
+        }
+        .btn-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            flex: 1;
+            min-width: 60px;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #e8edf3;
+            background: rgba(255, 255, 255, 0.06);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            letter-spacing: 0.3px;
+            border: 1px solid transparent;
+            user-select: none;
+        }
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        .btn:active {
+            transform: scale(0.97);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #2a4a7a, #1a3560);
+            border-color: rgba(255, 255, 255, 0.08);
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #3a5a8a, #2a4570);
+        }
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.04);
+        }
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.10);
+        }
+        .btn-active {
+            background: linear-gradient(135deg, #3a7aaa, #2a5a8a);
+            border-color: rgba(100, 180, 255, 0.3);
+            box-shadow: 0 0 16px rgba(60, 140, 255, 0.15);
+        }
+        .slider-group {
+            margin-top: 6px;
+        }
+        .slider-group label {
+            font-size: 12px;
+            color: #7a90aa;
+            display: flex;
+            justify-content: space-between;
+        }
+        .slider-group label span {
+            color: #b0c8e0;
+            font-weight: 500;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 4px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.10);
+            outline: none;
+            margin: 6px 0 4px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #5a8ad0, #3a6aaa);
+            cursor: pointer;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+            transition: 0.15s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #5a8ad0, #3a6aaa);
+            cursor: pointer;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+        }
+        .legend-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 16px;
+            margin-top: 4px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #9ab0cc;
+        }
+        .legend-gradient {
+            width: 80px;
+            height: 10px;
+            border-radius: 5px;
+            flex-shrink: 0;
+        }
+        .legend-gradient.electric {
+            background: linear-gradient(to right, #ffdd00 0%, #ff8800 50%, #ff0000 100%);
+        }
+        .legend-gradient.magnetic {
+            background: linear-gradient(to right, #00ccff 0%, #4a4aff 50%, #aa00ff 100%);
+        }
+        .legend-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .switch-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 2px 0;
+        }
+        .switch-label {
+            font-size: 13px;
+            color: #9ab0cc;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .switch-label .hint {
+            font-size: 10px;
+            color: #6a80a0;
+            background: rgba(255,255,255,0.04);
+            padding: 1px 8px;
+            border-radius: 8px;
+        }
+        .toggle-switch {
+            position: relative;
+            width: 40px;
+            height: 22px;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            inset: 0;
+            background: rgba(255,255,255,0.12);
+            border-radius: 22px;
+            transition: 0.25s;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .toggle-slider::before {
+            content: "";
+            position: absolute;
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            bottom: 2px;
+            background: #8aaac8;
+            border-radius: 50%;
+            transition: 0.25s;
+        }
+        .toggle-switch input:checked + .toggle-slider {
+            background: linear-gradient(135deg, #cc7a1a, #e0952a);
+            border-color: rgba(255,170,0,0.4);
+            box-shadow: 0 0 12px rgba(255,170,0,0.3);
+        }
+        .toggle-switch input:checked + .toggle-slider::before {
+            transform: translateX(18px);
+            background: #fff;
+        }
+        @media (max-width: 900px) {
+            #app {
+                flex-direction: column;
+                height: auto;
+                width: 100vw;
+                backdrop-filter: none;
+            }
+            #panel {
+                width: 100%;
+                min-width: unset;
+                max-height: 45vh;
+                border-left: none;
+                border-top: 1px solid rgba(255, 255, 255, 0.05);
+                padding: 16px;
+            }
+            #canvas-wrap {
+                height: 55vh;
+            }
+        }
+        @media (max-width: 500px) {
+            #panel {
+                padding: 12px;
+                gap: 10px;
+            }
+            .section {
+                padding: 10px 12px;
+            }
+            .btn {
+                font-size: 12px;
+                padding: 6px 10px;
+                min-width: 50px;
+            }
+            #info {
+                max-width: 240px;
+                padding: 10px 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <h1>⚡ 自由空间电磁波波动 — 教学平台</h1>
+        <a class="back" href="index.html">← 返回实验大厅</a>
+    </header>
+
+    <div id="app">
+        <div id="canvas-wrap">
+            <div id="loading">正在加载 WebGL 场景…</div>
+
+            <!-- 左上角信息 -->
+            <div id="info">
+                <h1>⚡ 电磁波在自由空间中的传播</h1>
+                <p>
+                    电场 <span class="e-color">E</span>（Y方向）　|　磁场 <span class="b-color">B</span>（X方向）
+                </p>
+                <p>
+                    传播方向：<span class="hl">+Z 轴</span>　|　波速：<span class="hl" id="info-speed">c</span>
+                </p>
+                <p>
+                    相位：<span class="pos" id="info-phase">同相</span>
+                </p>
+                <p style="font-size:0.75rem; opacity:0.65;">
+                    ※ 电场与磁场相互垂直，同相振荡
+                </p>
+            </div>
+
+            <!-- 速度状态 -->
+            <div id="speed-indicator">⚡ 电磁波沿 +Z 传播 ⚡</div>
+        </div>
+
+        <!-- 右侧控制面板 -->
+        <div id="panel">
+            <div class="panel-title">
+                ⚡ 电磁波控制
+            </div>
+
+            <!-- 仿真控制 -->
+            <div class="section">
+                <div class="section-label">⏯️ 仿真控制</div>
+                <div class="btn-group">
+                    <button class="btn btn-active" id="btnPlay">▶ 波动</button>
+                    <button class="btn btn-secondary" id="btnPause">⏸ 暂停</button>
+                    <button class="btn btn-primary" id="btnReset">⟲ 重置</button>
+                </div>
+            </div>
+
+            <!-- 速度 -->
+            <div class="section">
+                <div class="section-label">🌊 波速 / 频率</div>
+                <div class="slider-group">
+                    <label>角频率 ω <span id="omegaValue">2.0</span></label>
+                    <input type="range" id="omegaSlider" min="0.5" max="5.0" step="0.1" value="2.0" />
+                </div>
+            </div>
+
+            <!-- 物理模型 -->
+            <div class="section">
+                <div class="section-label">🔬 波参数</div>
+                <div class="switch-row">
+                    <span class="switch-label">
+                        📏 波长 λ
+                        <span class="hint">视觉比例</span>
+                    </span>
+                    <span style="color:#b0c8e0; font-weight:500;" id="wavelengthDisplay">4.0</span>
+                </div>
+                <div class="slider-group" style="margin-top:8px;">
+                    <input type="range" id="wavelengthSlider" min="2.0" max="8.0" step="0.2" value="4.0" />
+                </div>
+            </div>
+
+            <!-- 显示/隐藏 (电场) -->
+            <div class="section">
+                <div class="section-label">👁️ 电场显示</div>
+                <div class="btn-group" style="gap:8px;">
+                    <label style="flex:1; display:flex; align-items:center; gap:6px; font-size:13px; color:#9ab0cc; cursor:pointer;">
+                        <input type="checkbox" id="showElectricLines" checked style="accent-color:#ff5555; width:15px; height:15px;"> 场线
+                    </label>
+                    <label style="flex:1; display:flex; align-items:center; gap:6px; font-size:13px; color:#9ab0cc; cursor:pointer;">
+                        <input type="checkbox" id="showElectricArrows" checked style="accent-color:#ff5555; width:15px; height:15px;"> 矢量
+                    </label>
+                </div>
+            </div>
+
+            <!-- 显示/隐藏 (磁场) -->
+            <div class="section">
+                <div class="section-label">👁️ 磁场显示</div>
+                <div class="btn-group" style="gap:8px;">
+                    <label style="flex:1; display:flex; align-items:center; gap:6px; font-size:13px; color:#9ab0cc; cursor:pointer;">
+                        <input type="checkbox" id="showMagneticLines" checked style="accent-color:#55aaff; width:15px; height:15px;"> 场线
+                    </label>
+                    <label style="flex:1; display:flex; align-items:center; gap:6px; font-size:13px; color:#9ab0cc; cursor:pointer;">
+                        <input type="checkbox" id="showMagneticArrows" checked style="accent-color:#55aaff; width:15px; height:15px;"> 矢量
+                    </label>
+                </div>
+            </div>
+
+            <!-- 电场密度 -->
+            <div class="section">
+                <div class="section-label">📊 电场矢量密度 <span class="badge" id="electricDensityLabel">空间矢量数</span></div>
+                <div class="slider-group">
+                    <label>密度系数 <span id="electricDensityValue">4</span></label>
+                    <input type="range" id="electricDensitySlider" min="2" max="8" step="1" value="4" />
+                </div>
+            </div>
+
+            <!-- 磁场密度 -->
+            <div class="section">
+                <div class="section-label">📊 磁场矢量密度 <span class="badge" id="magneticDensityLabel">空间矢量数</span></div>
+                <div class="slider-group">
+                    <label>密度系数 <span id="magneticDensityValue">4</span></label>
+                    <input type="range" id="magneticDensitySlider" min="2" max="8" step="1" value="4" />
+                </div>
+            </div>
+
+            <!-- 视角控制 -->
+            <div class="section">
+                <div class="section-label">🔄 视角控制</div>
+                <div class="btn-group">
+                    <button class="btn btn-secondary" id="btnAutoRotate">自动旋转</button>
+                    <button class="btn btn-active" id="btnManualRotate">手动旋转</button>
+                </div>
+            </div>
+
+            <!-- 图例 -->
+            <div class="section" style="border-color:rgba(255,255,255,0.03);">
+                <div class="section-label" style="margin-bottom:4px;">🎨 图例</div>
+                <div class="legend-grid">
+                    <span class="legend-item"><span class="legend-dot" style="background:#ff5a5a;"></span> 电场 E (Y方向)</span>
+                    <span class="legend-item"><span class="legend-dot" style="background:#4a8aff;"></span> 磁场 B (X方向)</span>
+                </div>
+                <div class="legend-grid" style="margin-top:6px;">
+                    <span class="legend-item">
+                        <span class="legend-gradient electric"></span> 电场 |E|（暖色） 弱 → 强
+                    </span>
+                </div>
+                <div class="legend-grid" style="margin-top:6px;">
+                    <span class="legend-item">
+                        <span class="legend-gradient magnetic"></span> 磁场 |H|（冷色） 弱 → 强
+                    </span>
+                </div>
+                <div class="legend-grid" style="margin-top:6px;">
+                    <span class="legend-item" style="font-size:11px; color:#6a8aaa;">
+                        ➡️ 矢量箭头长度 ∝ 场强，颜色表示强度
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ---------- Three.js 模块 ---------- -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // ============================================================
+    //  1. 场景 / 相机 / 渲染器
+    // ============================================================
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a0f16);
+    scene.fog = new THREE.FogExp2(0x0a0f16, 0.008);
+
+    const canvasWrap = document.getElementById('canvas-wrap');
+    const camera = new THREE.PerspectiveCamera(
+        50, canvasWrap.clientWidth / canvasWrap.clientHeight, 0.1, 1000
+    );
+    camera.position.set(10, 8, 16);
+    camera.lookAt(0, 0, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(canvasWrap.clientWidth, canvasWrap.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.domElement.style.display = 'block';
+    canvasWrap.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.rotateSpeed = 0.7;
+    controls.zoomSpeed = 0.9;
+    controls.target.set(0, 0, 0);
+    controls.maxPolarAngle = Math.PI * 0.98;
+    controls.minDistance = 3;
+    controls.maxDistance = 50;
+    controls.autoRotate = true;       // 默认自动旋转
+    controls.autoRotateSpeed = 0.8;
+
+    // ============================================================
+    //  2. 光照
+    // ============================================================
+    scene.add(new THREE.AmbientLight(0x445566, 0.9));
+
+    const keyLight = new THREE.DirectionalLight(0xffffff, 1.1);
+    keyLight.position.set(5, 8, 6);
+    scene.add(keyLight);
+
+    const fillLight = new THREE.DirectionalLight(0x4466ff, 0.45);
+    fillLight.position.set(-6, -3, -5);
+    scene.add(fillLight);
+
+    // ============================================================
+    //  3. 背景星空
+    // ============================================================
+    (function createStars() {
+        const count = 2500;
+        const positions = new Float32Array(count * 3);
+        const colors = new Float32Array(count * 3);
+        for (let i = 0; i < count; i++) {
+            const r = 60 + Math.random() * 140;
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(2 * Math.random() - 1);
+            positions[i*3]     = r * Math.sin(phi) * Math.cos(theta);
+            positions[i*3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+            positions[i*3 + 2] = r * Math.cos(phi);
+            const c = 0.5 + Math.random() * 0.5;
+            colors[i*3]     = c * (0.7 + Math.random() * 0.3);
+            colors[i*3 + 1] = c * (0.7 + Math.random() * 0.3);
+            colors[i*3 + 2] = c;
+        }
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        const mat = new THREE.PointsMaterial({
+            size: 0.5, vertexColors: true, transparent: true, opacity: 0.85,
+            sizeAttenuation: true, depthWrite: false
+        });
+        const stars = new THREE.Points(geo, mat);
+        scene.add(stars);
+        scene.userData.stars = stars;
+    })();
+
+    // ============================================================
+    //  4. 辅助元素
+    // ============================================================
+    const grid = new THREE.GridHelper(36, 36, 0x2a5a9a, 0x16304f);
+    grid.position.y = -4.2;
+    grid.material.transparent = true;
+    grid.material.opacity = 0.4;
+    scene.add(grid);
+
+    (function createAxes() {
+        const axisLen = 12;
+        const makeAxis = (dir, color) => {
+            const geo = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, 0, 0),
+                dir.clone().multiplyScalar(axisLen)
+            ]);
+            const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.5 });
+            scene.add(new THREE.Line(geo, mat));
+        };
+        makeAxis(new THREE.Vector3(1, 0, 0), 0xff5544); // X轴
+        makeAxis(new THREE.Vector3(0, 1, 0), 0x55ff77); // Y轴
+        makeAxis(new THREE.Vector3(0, 0, 1), 0x5599ff); // Z轴 (传播方向)
+
+        // Z轴箭头
+        const cone = new THREE.Mesh(
+            new THREE.ConeGeometry(0.12, 0.4, 8),
+            new THREE.MeshBasicMaterial({ color: 0x5599ff, transparent: true, opacity: 0.7 })
+        );
+        cone.position.set(0, 0, axisLen);
+        cone.rotation.x = Math.PI / 2;
+        scene.add(cone);
+    })();
+
+    // 传播方向指示
+    (function createMotionIndicator() {
+        const arrow = new THREE.ArrowHelper(
+            new THREE.Vector3(0, 0, 1),
+            new THREE.Vector3(0, -3.6, -9.5),
+            2.0, 0xffaa00, 0.55, 0.3
+        );
+        scene.add(arrow);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        ctx.font = 'bold 34px "Segoe UI", "Microsoft YaHei", sans-serif';
+        ctx.fillStyle = '#ffaa00';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = 'rgba(0,0,0,0.9)';
+        ctx.shadowBlur = 8;
+        ctx.fillText('传播 → Z', 128, 32);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.minFilter = THREE.LinearFilter;
+        const spriteMat = new THREE.SpriteMaterial({
+            map: texture, transparent: true, depthTest: false, depthWrite: false
+        });
+        const sprite = new THREE.Sprite(spriteMat);
+        sprite.scale.set(2.4, 0.6, 1);
+        sprite.position.set(0, -4.15, -9.5);
+        scene.add(sprite);
+    })();
+
+    // ============================================================
+    //  5. 颜色映射函数（电场暖色、磁场冷色）
+    // ============================================================
+    const _colorCache = new THREE.Color();
+
+    // 电场暖色映射：t=0 → 黄 (#ffdd00)，t=0.5 → 橙 (#ff8800)，t=1 → 红 (#ff0000)
+    function getElectricColor(t) {
+        t = Math.max(0, Math.min(1, t));
+        let r, g, b;
+        if (t < 0.5) {
+            const s = t / 0.5;
+            r = 1.0;
+            g = 0.867 - 0.333 * s;
+            b = 0.0;
+        } else {
+            const s = (t - 0.5) / 0.5;
+            r = 1.0;
+            g = 0.533 - 0.533 * s;
+            b = 0.0;
+        }
+        return _colorCache.setRGB(r, g, b);
+    }
+
+    // 磁场冷色映射：t=0 → 青 (#00ccff)，t=0.5 → 蓝 (#4a4aff)，t=1 → 紫 (#aa00ff)
+    function getMagneticColor(t) {
+        t = Math.max(0, Math.min(1, t));
+        let r, g, b;
+        if (t < 0.5) {
+            const s = t / 0.5;
+            r = 0.0 + 0.290 * s;
+            g = 0.800 - 0.510 * s;
+            b = 1.0;
+        } else {
+            const s = (t - 0.5) / 0.5;
+            r = 0.290 + 0.377 * s;
+            g = 0.290 - 0.290 * s;
+            b = 1.0;
+        }
+        return _colorCache.setRGB(r, g, b);
+    }
+
+    // ============================================================
+    //  6. 公用：清理 group 内所有子对象
+    // ============================================================
+    function disposeChildren(group) {
+        for (let i = group.children.length - 1; i >= 0; i--) {
+            const child = group.children[i];
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) {
+                if (Array.isArray(child.material)) {
+                    child.material.forEach(m => m.dispose());
+                } else {
+                    child.material.dispose();
+                }
+            }
+            group.remove(child);
+        }
+    }
+
+    // ============================================================
+    //  7. 电磁波参数
+    // ============================================================
+    let omega = 2.0;          // 角频率
+    let waveLength = 4.0;     // 波长
+    let k = (2 * Math.PI) / waveLength;  // 波数
+    let time = 0;
+    let amplitude = 2.5;      // 振幅
+
+    const zStart = -10;
+    const zEnd = 10;
+    const segments = 100;     // 每条曲线的分段数
+
+    // ============================================================
+    //  8. 电场描绘（连续场线 + 空间矢量） 默认全部显示
+    // ============================================================
+    let electricLinesVisible = true;
+    let electricArrowsVisible = true;
+    let electricDensity = 4;
+
+    const electricLinesGroup = new THREE.Group();
+    scene.add(electricLinesGroup);
+
+    const electricArrowsGroup = new THREE.Group();
+    scene.add(electricArrowsGroup);
+
+    const electricLines = [];
+    const electricArrows = [];
+
+    // 电场线参数
+    const ELEC_LINE_SEGMENTS = segments;
+    let electricArrowSpacing = 2.0;
+
+    // 初始化电场线 (连续曲线)
+    function buildElectricLines() {
+        disposeChildren(electricLinesGroup);
+        electricLines.length = 0;
+
+        // 创建一条从 zStart 到 zEnd 的曲线
+        const points = [];
+        for (let i = 0; i <= ELEC_LINE_SEGMENTS; i++) {
+            const t = i / ELEC_LINE_SEGMENTS;
+            const z = zStart + (zEnd - zStart) * t;
+            points.push(new THREE.Vector3(0, 0, z));
+        }
+
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const colors = new Float32Array((ELEC_LINE_SEGMENTS + 1) * 3);
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        const material = new THREE.LineBasicMaterial({
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.9,
+            depthWrite: false,
+            linewidth: 1
+        });
+
+        const line = new THREE.Line(geometry, material);
+        electricLinesGroup.add(line);
+        electricLines.push({ line, geometry });
+    }
+
+    // 更新电场线颜色和位置 (随波形变化)
+    function updateElectricLines() {
+        if (!electricLinesVisible) return;
+
+        electricLines.forEach(({ line, geometry }) => {
+            const positions = geometry.attributes.position.array;
+            const colors = geometry.attributes.color.array;
+
+            for (let i = 0; i <= ELEC_LINE_SEGMENTS; i++) {
+                const t = i / ELEC_LINE_SEGMENTS;
+                const z = zStart + (zEnd - zStart) * t;
+                const value = amplitude * Math.cos(k * z - omega * time);
+
+                // 电场方向为 Y
+                positions[i*3]     = 0;
+                positions[i*3 + 1] = value;
+                positions[i*3 + 2] = z;
+
+                // 颜色强度基于场强绝对值
+                const strength = Math.abs(value) / amplitude;
+                const col = getElectricColor(strength);
+
+                colors[i*3]     = col.r;
+                colors[i*3 + 1] = col.g;
+                colors[i*3 + 2] = col.b;
+            }
+
+            geometry.attributes.position.needsUpdate = true;
+            geometry.attributes.color.needsUpdate = true;
+            geometry.computeBoundingSphere();
+        });
+    }
+
+    // 构建电场箭头 (空间矢量)
+    function buildElectricArrows(density) {
+        disposeChildren(electricArrowsGroup);
+        electricArrows.length = 0;
+
+        // 根据密度计算箭头数量
+        const count = density * 6; // 基础数量
+        const spacing = (zEnd - zStart) / count;
+        electricArrowSpacing = spacing;
+
+        for (let i = 0; i <= count; i++) {
+            const z = zStart + i * spacing;
+            // 限制范围
+            if (z < zStart || z > zEnd) continue;
+
+            const arrow = new THREE.ArrowHelper(
+                new THREE.Vector3(0, 1, 0),
+                new THREE.Vector3(0, 0, z),
+                0.5,
+                0xff4d4d,
+                0.2,
+                0.1
+            );
+            arrow.line.material.transparent = true;
+            arrow.line.material.opacity = 0.9;
+            arrow.cone.material.transparent = true;
+            arrow.cone.material.opacity = 0.9;
+
+            electricArrowsGroup.add(arrow);
+            electricArrows.push({ arrow, z });
+        }
+    }
+
+    // 更新电场箭头
+    function updateElectricArrows() {
+        if (!electricArrowsVisible) return;
+
+        electricArrows.forEach(({ arrow, z }) => {
+            const value = amplitude * Math.cos(k * z - omega * time);
+            const absVal = Math.abs(value);
+            const strength = absVal / amplitude;
+
+            // 长度至少为极小值
+            const len = Math.max(0.05, absVal);
+
+            // 方向
+            const dir = value >= 0 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(0, -1, 0);
+
+            // 颜色
+            const color = getElectricColor(strength);
+
+            arrow.setDirection(dir);
+            arrow.setLength(len, 0.18, 0.1);
+            arrow.setColor(color);
+
+            // 根据强度调整不透明度
+            arrow.line.material.opacity = 0.3 + 0.7 * strength;
+            arrow.cone.material.opacity = 0.3 + 0.7 * strength;
+        });
+    }
+
+    function rebuildElectricField(density) {
+        buildElectricLines();
+        buildElectricArrows(density);
+
+        // 根据可见性设置
+        electricLinesGroup.visible = electricLinesVisible;
+        electricArrowsGroup.visible = electricArrowsVisible;
+
+        const label = document.getElementById('electricDensityLabel');
+        const valueEl = document.getElementById('electricDensityValue');
+        label.textContent = '空间矢量数';
+        valueEl.textContent = electricArrows.length;
+    }
+
+    // ============================================================
+    //  9. 磁场描绘（连续场线 + 空间矢量） 默认全部显示
+    // ============================================================
+    let magneticLinesVisible = true;
+    let magneticArrowsVisible = true;
+    let magneticDensity = 4;
+
+    const magneticLinesGroup = new THREE.Group();
+    scene.add(magneticLinesGroup);
+
+    const magneticArrowsGroup = new THREE.Group();
+    scene.add(magneticArrowsGroup);
+
+    const magneticLines = [];
+    const magneticArrows = [];
+
+    const MAG_LINE_SEGMENTS = segments;
+    let magneticArrowSpacing = 2.0;
+
+    // 初始化磁场线
+    function buildMagneticLines() {
+        disposeChildren(magneticLinesGroup);
+        magneticLines.length = 0;
+
+        const points = [];
+        for (let i = 0; i <= MAG_LINE_SEGMENTS; i++) {
+            const t = i / MAG_LINE_SEGMENTS;
+            const z = zStart + (zEnd - zStart) * t;
+            points.push(new THREE.Vector3(0, 0, z));
+        }
+
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const colors = new Float32Array((MAG_LINE_SEGMENTS + 1) * 3);
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        const material = new THREE.LineBasicMaterial({
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.9,
+            depthWrite: false
+        });
+
+        const line = new THREE.Line(geometry, material);
+        magneticLinesGroup.add(line);
+        magneticLines.push({ line, geometry });
+    }
+
+    // 更新磁场线
+    function updateMagneticLines() {
+        if (!magneticLinesVisible) return;
+
+        magneticLines.forEach(({ line, geometry }) => {
+            const positions = geometry.attributes.position.array;
+            const colors = geometry.attributes.color.array;
+
+            for (let i = 0; i <= MAG_LINE_SEGMENTS; i++) {
+                const t = i / MAG_LINE_SEGMENTS;
+                const z = zStart + (zEnd - zStart) * t;
+                const value = amplitude * Math.cos(k * z - omega * time);
+
+                // 磁场方向为 X
+                positions[i*3]     = value;
+                positions[i*3 + 1] = 0;
+                positions[i*3 + 2] = z;
+
+                const strength = Math.abs(value) / amplitude;
+                const col = getMagneticColor(strength);
+
+                colors[i*3]     = col.r;
+                colors[i*3 + 1] = col.g;
+                colors[i*3 + 2] = col.b;
+            }
+
+            geometry.attributes.position.needsUpdate = true;
+            geometry.attributes.color.needsUpdate = true;
+            geometry.computeBoundingSphere();
+        });
+    }
+
+    // 构建磁场箭头
+    function buildMagneticArrows(density) {
+        disposeChildren(magneticArrowsGroup);
+        magneticArrows.length = 0;
+
+        const count = density * 6;
+        const spacing = (zEnd - zStart) / count;
+        magneticArrowSpacing = spacing;
+
+        for (let i = 0; i <= count; i++) {
+            const z = zStart + i * spacing;
+            if (z < zStart || z > zEnd) continue;
+
+            const arrow = new THREE.ArrowHelper(
+                new THREE.Vector3(1, 0, 0),
+                new THREE.Vector3(0, 0, z),
+                0.5,
+                0x4da6ff,
+                0.2,
+                0.1
+            );
+            arrow.line.material.transparent = true;
+            arrow.line.material.opacity = 0.9;
+            arrow.cone.material.transparent = true;
+            arrow.cone.material.opacity = 0.9;
+
+            magneticArrowsGroup.add(arrow);
+            magneticArrows.push({ arrow, z });
+        }
+    }
+
+    // 更新磁场箭头
+    function updateMagneticArrows() {
+        if (!magneticArrowsVisible) return;
+
+        magneticArrows.forEach(({ arrow, z }) => {
+            const value = amplitude * Math.cos(k * z - omega * time);
+            const absVal = Math.abs(value);
+            const strength = absVal / amplitude;
+
+            const len = Math.max(0.05, absVal);
+            const dir = value >= 0 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(-1, 0, 0);
+
+            const color = getMagneticColor(strength);
+
+            arrow.setDirection(dir);
+            arrow.setLength(len, 0.18, 0.1);
+            arrow.setColor(color);
+
+            arrow.line.material.opacity = 0.3 + 0.7 * strength;
+            arrow.cone.material.opacity = 0.3 + 0.7 * strength;
+        });
+    }
+
+    function rebuildMagneticField(density) {
+        buildMagneticLines();
+        buildMagneticArrows(density);
+
+        magneticLinesGroup.visible = magneticLinesVisible;
+        magneticArrowsGroup.visible = magneticArrowsVisible;
+
+        const label = document.getElementById('magneticDensityLabel');
+        const valueEl = document.getElementById('magneticDensityValue');
+        label.textContent = '空间矢量数';
+        valueEl.textContent = magneticArrows.length;
+    }
+
+    // ============================================================
+    //  10. 初始化
+    // ============================================================
+    rebuildElectricField(electricDensity);
+    rebuildMagneticField(magneticDensity);
+
+    // 初始更新一次
+    updateElectricLines();
+    updateElectricArrows();
+    updateMagneticLines();
+    updateMagneticArrows();
+
+    const loadingEl = document.getElementById('loading');
+    if (loadingEl) loadingEl.remove();
+
+    // ============================================================
+    //  11. 事件绑定
+    // ============================================================
+    // 播放/暂停
+    let isPlaying = true;
+
+    document.getElementById('btnPlay').addEventListener('click', () => {
+        isPlaying = true;
+        document.getElementById('btnPlay').classList.add('btn-active');
+        document.getElementById('btnPlay').classList.remove('btn-secondary');
+        document.getElementById('btnPause').classList.remove('btn-active');
+        document.getElementById('btnPause').classList.add('btn-secondary');
+    });
+
+    document.getElementById('btnPause').addEventListener('click', () => {
+        isPlaying = false;
+        document.getElementById('btnPause').classList.add('btn-active');
+        document.getElementById('btnPause').classList.remove('btn-secondary');
+        document.getElementById('btnPlay').classList.remove('btn-active');
+        document.getElementById('btnPlay').classList.add('btn-secondary');
+    });
+
+    document.getElementById('btnReset').addEventListener('click', () => {
+        time = 0;
+        // 更新所有视图
+        updateElectricLines();
+        updateElectricArrows();
+        updateMagneticLines();
+        updateMagneticArrows();
+        // 重置为暂停状态
+        isPlaying = false;
+        document.getElementById('btnPause').classList.add('btn-active');
+        document.getElementById('btnPause').classList.remove('btn-secondary');
+        document.getElementById('btnPlay').classList.remove('btn-active');
+        document.getElementById('btnPlay').classList.add('btn-secondary');
+    });
+
+    // 角频率
+    document.getElementById('omegaSlider').addEventListener('input', (e) => {
+        omega = parseFloat(e.target.value);
+        document.getElementById('omegaValue').textContent = omega.toFixed(1);
+    });
+
+    // 波长
+    document.getElementById('wavelengthSlider').addEventListener('input', (e) => {
+        waveLength = parseFloat(e.target.value);
+        k = (2 * Math.PI) / waveLength;
+        document.getElementById('wavelengthDisplay').textContent = waveLength.toFixed(1);
+    });
+
+    // 电场显示控制
+    document.getElementById('showElectricLines').addEventListener('change', (e) => {
+        electricLinesVisible = e.target.checked;
+        electricLinesGroup.visible = electricLinesVisible;
+        if (electricLinesVisible) updateElectricLines();
+    });
+
+    document.getElementById('showElectricArrows').addEventListener('change', (e) => {
+        electricArrowsVisible = e.target.checked;
+        electricArrowsGroup.visible = electricArrowsVisible;
+        if (electricArrowsVisible) updateElectricArrows();
+    });
+
+    // 磁场显示控制
+    document.getElementById('showMagneticLines').addEventListener('change', (e) => {
+        magneticLinesVisible = e.target.checked;
+        magneticLinesGroup.visible = magneticLinesVisible;
+        if (magneticLinesVisible) updateMagneticLines();
+    });
+
+    document.getElementById('showMagneticArrows').addEventListener('change', (e) => {
+        magneticArrowsVisible = e.target.checked;
+        magneticArrowsGroup.visible = magneticArrowsVisible;
+        if (magneticArrowsVisible) updateMagneticArrows();
+    });
+
+    // 密度控制
+    document.getElementById('electricDensitySlider').addEventListener('input', (e) => {
+        electricDensity = parseInt(e.target.value);
+        rebuildElectricField(electricDensity);
+        updateElectricLines();
+        updateElectricArrows();
+    });
+
+    document.getElementById('magneticDensitySlider').addEventListener('input', (e) => {
+        magneticDensity = parseInt(e.target.value);
+        rebuildMagneticField(magneticDensity);
+        updateMagneticLines();
+        updateMagneticArrows();
+    });
+
+    // 视角控制
+    document.getElementById('btnAutoRotate').addEventListener('click', () => {
+        controls.autoRotate = true;
+        document.getElementById('btnAutoRotate').classList.add('btn-active');
+        document.getElementById('btnAutoRotate').classList.remove('btn-secondary');
+        document.getElementById('btnManualRotate').classList.remove('btn-active');
+        document.getElementById('btnManualRotate').classList.add('btn-secondary');
+    });
+
+    document.getElementById('btnManualRotate').addEventListener('click', () => {
+        controls.autoRotate = false;
+        document.getElementById('btnManualRotate').classList.add('btn-active');
+        document.getElementById('btnManualRotate').classList.remove('btn-secondary');
+        document.getElementById('btnAutoRotate').classList.remove('btn-active');
+        document.getElementById('btnAutoRotate').classList.add('btn-secondary');
+    });
+
+    // ============================================================
+    //  12. 窗口自适应
+    // ============================================================
+    window.addEventListener('resize', () => {
+        const w = canvasWrap.clientWidth;
+        const h = canvasWrap.clientHeight;
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    });
+
+    // ============================================================
+    //  13. 动画循环
+    // ============================================================
+    const clock = new THREE.Clock();
+
+    function animate() {
+        requestAnimationFrame(animate);
+
+        const delta = clock.getDelta();
+
+        // 更新时间
+        if (isPlaying) {
+            time += delta * omega;
+        }
+
+        // 更新电场和磁场
+        updateElectricLines();
+        updateElectricArrows();
+        updateMagneticLines();
+        updateMagneticArrows();
+
+        // 星空缓慢旋转
+        if (scene.userData.stars) {
+            scene.userData.stars.rotation.y += delta * 0.008;
+            scene.userData.stars.rotation.x += delta * 0.003;
+        }
+
+        // 更新控制器
+        controls.update();
+
+        // 渲染
+        renderer.render(scene, camera);
+    }
+
+    animate();
+
+    console.log('%c⚡ 自由空间电磁波波动教学平台 · WebGL · 场线与矢量默认全部显示',
+        'color:#ffaa00; font-weight:bold; font-size:14px;');
+    </script>
+</body>
+</html>

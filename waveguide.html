@@ -4,33 +4,7 @@
 <meta charset="UTF-8">
 <title>3D 矩形波导 电磁场可视化（时变）</title>
 <style>
-body {margin:0;background:#080816;overflow:hidden;display:flex;flex-direction:column;height:100vh;}
-:root { --ahnu-blue: #003d7a; --ahnu-gold: #c9a227; }
-.header {
-  background: linear-gradient(90deg, var(--ahnu-blue) 0%, #0056a3 100%);
-  color: white;
-  padding: 0 40px;
-  display: flex;
-  align-items: center;
-  height: 64px;
-  box-shadow: 0 4px 20px rgba(0,61,122,0.25);
-  flex-shrink: 0;
-  z-index: 100;
-}
-.header h1 { font-size: 18px; font-weight: 700; letter-spacing: 2px; }
-.header .back {
-  margin-left: auto;
-  color: white;
-  text-decoration: none;
-  font-size: 13px;
-  opacity: 0.85;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: opacity 0.2s;
-}
-.header .back:hover { opacity: 1; }
-#scene-wrap { flex: 1; position: relative; overflow: hidden; }
+body {margin:0;background:#080816;overflow:hidden;}
 canvas {display:block;}
 .info{position:absolute;top:20px;left:20px;color:#fff;background:rgba(0,0,0,0.6);padding:12px 16px;border-radius:8px;font-size:15px;z-index:10;max-width:340px;}
 .controls{position:absolute;bottom:20px;left:20px;color:#fff;background:rgba(0,0,0,0.6);padding:10px 16px;border-radius:8px;font-size:14px;z-index:10;}
@@ -44,11 +18,6 @@ label{cursor:pointer;margin-right:8px;}
 </style>
 </head>
 <body>
-<header class="header">
-  <h1>📡 矩形波导模式分析</h1>
-  <a class="back" href="index.html">← 返回实验大厅</a>
-</header>
-<div id="scene-wrap">
 <div class="info" id="infoBox">
 <b> 安徽师范大学 3D TE₁₀ 波导电磁场（时变）</b><br>
 鼠标拖动旋转｜滚轮缩放
@@ -58,12 +27,6 @@ label{cursor:pointer;margin-right:8px;}
 m: <input id="mInput" type="number" min="0" max="5" value="1">
 n: <input id="nInput" type="number" min="0" max="5" value="0">
 <button id="updateBtn">更新波模</button><br>
-<span style="display:inline-block;margin-top:5px;">波导尺寸（cm）:</span>
-a: <input id="aInput" type="number" min="0.1" step="0.1" value="6" style="width:58px;">
-b: <input id="bInput" type="number" min="0.1" step="0.1" value="2" style="width:58px;">
-z长度: <input id="lInput" type="number" min="0.2" step="0.1" value="12" style="width:58px;"><br>
-频率: <input id="freqInput" type="number" min="0.001" step="0.1" value="3.0" style="width:70px;"> GHz
-<span id="cutoffDisplay" style="margin-left:8px;color:#ffd966;"><b>截止频率:</b> -- GHz</span><br>
 时间相位: <span id="phase">0</span> rad | <button id="pauseBtn">⏸ 暂停</button><br>
 <label><input type="checkbox" id="showE" checked> 电场</label>
 <label><input type="checkbox" id="showM" checked> 磁场</label>
@@ -74,7 +37,7 @@ z长度: <input id="lInput" type="number" min="0.2" step="0.1" value="12" style=
 
 <div id="zSliceControl" style="margin-top:6px;">
   <label><input type="checkbox" id="showZSlice"> 只显示z截面</label>
-  z位置(<span id="zSliceRange">-6~6</span>): <input id="zSliceInput" type="number" step="0.1" value="0" min="-6" max="6" style="width:60px;">
+  z位置(-6~6): <input id="zSliceInput" type="number" step="0.1" value="0" min="-6" max="6" style="width:60px;">
 </div>
 
 <div id="teEFieldModeControl" style="margin-top:6px;">
@@ -133,9 +96,9 @@ z长度: <input id="lInput" type="number" min="0.2" step="0.1" value="12" style=
 </div>
 
 <div style="margin-top:8px;border-top:1px ;">
-  x(<span id="probeXRange">-3~3</span>): <input id="probeX" type="number" step="0.1" value="0">
-  y(<span id="probeYRange">0~2</span>): <input id="probeY" type="number" step="0.1" value="1">
-  z(<span id="probeZRange">-6~6</span>): <input id="probeZ" type="number" step="0.1" value="0">
+  x(-3,3):<<input id="probeX" type="number" step="0.1" value="0">
+  y(0,2):<<input id="probeY" type="number" step="0.1" value="1">
+  z(-6,6):<<input id="probeZ" type="number" step="0.1" value="0">
 </div>
 
 </div>
@@ -234,7 +197,7 @@ scene.background = new THREE.Color("#080816");
 const camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.1, 2000);
 const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(innerWidth,innerHeight);
-document.getElementById('scene-wrap').appendChild(renderer.domElement);
+document.body.appendChild(renderer.domElement);
 
 camera.position.set(14,9,16);
 const controls = new OrbitControls(camera,renderer.domElement);
@@ -246,31 +209,27 @@ const dirLight = new THREE.DirectionalLight(0xffffff,1);
 dirLight.position.set(20,20,20);
 scene.add(dirLight);
 
-let a = 6, b = 2, L = 12; // cm；L 为 z 方向长度
-const C_CM_PER_NS = 29.9792458; // 光速，cm/ns；1/ns = GHz
+const a = 6, b = 2, L = 12;
+const boxGeo = new THREE.BoxGeometry(a,b,L);
 
 // 修改：分离侧面材质与端面材质，两端开口始终透明
 const sideMat = new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,depthWrite:false});
 const endMat = new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,depthWrite:false});
 const boxMat = [sideMat, sideMat, sideMat, sideMat, endMat, endMat]; // 0:right, 1:left, 2:top, 3:bottom, 4:front, 5:back
 
-let waveguide = new THREE.Mesh(new THREE.BoxGeometry(a,b,L),boxMat);
+const waveguide = new THREE.Mesh(boxGeo,boxMat);
 waveguide.position.y = b/2;
 scene.add(waveguide);
 
-let edgeLine = new THREE.LineSegments(
-  new THREE.EdgesGeometry(new THREE.BoxGeometry(a+0.03,b+0.03,L+0.03)),
-  new THREE.LineBasicMaterial({color:0x99ccff})
-);
+const edgeGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(a+0.03,b+0.03,L+0.03));
+const edgeLine = new THREE.LineSegments(edgeGeo,new THREE.LineBasicMaterial({color:0x99ccff}));
 edgeLine.position.y = b/2;
 scene.add(edgeLine);
 
 let mode = 'TE';
 let m = 1, n = 0;
-let frequencyGHz = 3.0;
-let cutoffGHz = 0;
-let beta = 0.8; // rad/cm，按输入频率实时计算
-let omega = 1.5; // 可视化时间相位速度，随频率变化
+const beta = 0.8;
+const omega = 1.5;
 let time = 0;
 let isRunning = true;
 let tmDensity = 3;
@@ -290,15 +249,6 @@ let zSliceValue = 0;
 const modeSel = document.getElementById('modeSel');
 const mInput = document.getElementById('mInput');
 const nInput = document.getElementById('nInput');
-const aInput = document.getElementById('aInput');
-const bInput = document.getElementById('bInput');
-const lInput = document.getElementById('lInput');
-const freqInput = document.getElementById('freqInput');
-const cutoffDisplay = document.getElementById('cutoffDisplay');
-const zSliceRange = document.getElementById('zSliceRange');
-const probeXRange = document.getElementById('probeXRange');
-const probeYRange = document.getElementById('probeYRange');
-const probeZRange = document.getElementById('probeZRange');
 const updateBtn = document.getElementById('updateBtn');
 const pauseBtn = document.getElementById('pauseBtn');
 const infoBox = document.getElementById('infoBox');
@@ -360,48 +310,6 @@ const teMDensityControl = document.getElementById('teMDensityControl');
 const teMDensityInput = document.getElementById('teMDensity');
 const teMDensityVal = document.getElementById('teMDensityVal');
 
-function calculateCutoffGHz() {
-  return (C_CM_PER_NS / 2) * Math.sqrt((m/a)**2 + (n/b)**2);
-}
-
-function updatePropagationParameters() {
-  cutoffGHz = calculateCutoffGHz();
-  const k0 = 2 * Math.PI * frequencyGHz / C_CM_PER_NS;
-  const kc = Math.sqrt(get_kc2());
-  const aboveCutoff = frequencyGHz > cutoffGHz + 1e-9;
-  beta = aboveCutoff ? Math.sqrt(Math.max(0, k0*k0 - kc*kc)) : 0;
-  omega = 1.5 * Math.max(0.15, frequencyGHz / Math.max(cutoffGHz, 1e-6));
-  const status = aboveCutoff ? '传播' : (Math.abs(frequencyGHz-cutoffGHz) < 1e-9 ? '截止' : '低于截止，不传播');
-  cutoffDisplay.innerHTML = `<b>截止频率:</b> ${cutoffGHz.toFixed(3)} GHz ｜ <b>状态:</b> ${status} ｜ β=${beta.toFixed(3)} rad/cm`;
-  cutoffDisplay.style.color = aboveCutoff ? '#9cff9c' : '#ffd966';
-}
-
-function updateDimensionRanges() {
-  zSliceInput.min = (-L/2).toString(); zSliceInput.max = (L/2).toString();
-  zSliceRange.textContent = `${(-L/2).toFixed(2)}~${(L/2).toFixed(2)}`;
-  probeXInput.min = (-a/2).toString(); probeXInput.max = (a/2).toString();
-  probeYInput.min = '0'; probeYInput.max = b.toString();
-  probeZInput.min = (-L/2).toString(); probeZInput.max = (L/2).toString();
-  probeXRange.textContent = `${(-a/2).toFixed(2)}~${(a/2).toFixed(2)}`;
-  probeYRange.textContent = `0~${b.toFixed(2)}`;
-  probeZRange.textContent = `${(-L/2).toFixed(2)}~${(L/2).toFixed(2)}`;
-  zSliceValue = Math.max(-L/2, Math.min(L/2, zSliceValue));
-  zSliceInput.value = zSliceValue.toFixed(2);
-}
-
-function rebuildWaveguideGeometry() {
-  if(waveguide.geometry) waveguide.geometry.dispose();
-  waveguide.geometry = new THREE.BoxGeometry(a,b,L);
-  waveguide.position.y = b/2;
-  if(edgeLine.geometry) edgeLine.geometry.dispose();
-  edgeLine.geometry = new THREE.EdgesGeometry(new THREE.BoxGeometry(a+0.03,b+0.03,L+0.03));
-  edgeLine.position.y = b/2;
-  updateDimensionRanges();
-  if(pickedPoint && (pickedPoint.x < -a/2 || pickedPoint.x > a/2 || pickedPoint.y < 0 || pickedPoint.y > b || pickedPoint.z < -L/2 || pickedPoint.z > L/2)) {
-    clearPickedPoint();
-  }
-}
-
 function updateLegendVisibility() {
     fieldLegend.style.display = (showECheck.checked || showMCheck.checked) ? 'block' : 'none';
     chargeLegend.style.display = showChargeCheck.checked ? 'block' : 'none';
@@ -441,14 +349,6 @@ updateBtn.addEventListener('click', () => {
     mode = modeSel.value;
     m = parseInt(mInput.value);
     n = parseInt(nInput.value);
-    const newA = parseFloat(aInput.value);
-    const newB = parseFloat(bInput.value);
-    const newL = parseFloat(lInput.value);
-    const newFreq = parseFloat(freqInput.value);
-    if(!(newA > 0) || !(newB > 0) || !(newL > 0) || !(newFreq > 0)) {
-      alert('a、b、z长度和频率必须为正数'); return;
-    }
-    a = newA; b = newB; L = newL; frequencyGHz = newFreq;
     if(mode === 'TE' && m === 0 && n === 0) { alert('TE₀₀ 模式不存在'); return; }
     if(mode === 'TM' && (m === 0 || n === 0)) { alert('TM 模式要求 m≥1 且 n≥1'); return; }
 
@@ -457,13 +357,10 @@ updateBtn.addEventListener('click', () => {
         teEFieldModeSel.value = 'arrow';
     }
 
-    rebuildWaveguideGeometry();
-    updatePropagationParameters();
-
     if(mode === 'TE') {
-        infoBox.innerHTML = `<b>3D TE<sub>${m}${n}</sub> 波导电磁场（时变）</b><br>a=${a.toFixed(2)} cm, b=${b.toFixed(2)} cm, z=${L.toFixed(2)} cm｜f=${frequencyGHz.toFixed(3)} GHz｜fc=${cutoffGHz.toFixed(3)} GHz<br>鼠标拖动旋转｜滚轮缩放`;
+        infoBox.innerHTML = `<b>3D TE<sub>${m}${n}</sub> 波导电磁场（时变）</b><br>鼠标拖动旋转｜滚轮缩放`;
     } else {
-        infoBox.innerHTML = `<b>3D TM<sub>${m}${n}</sub> 波导电磁场（时变）</b><br>a=${a.toFixed(2)} cm, b=${b.toFixed(2)} cm, z=${L.toFixed(2)} cm｜f=${frequencyGHz.toFixed(3)} GHz｜fc=${cutoffGHz.toFixed(3)} GHz<br>鼠标拖动旋转｜滚轮缩放`;
+        infoBox.innerHTML = `<b>3D TM<sub>${m}${n}</sub> 波导电磁场（时变）</b><br>鼠标拖动旋转｜滚轮缩放`;
     }
 
     time = 0;
@@ -2177,8 +2074,6 @@ function updateChargeField(phase){
     }
 }
 
-updateDimensionRanges();
-updatePropagationParameters();
 if(showGridCheck.checked) createWaveguideGrid();
 updateEField(0); updateMField(0); updateLegendVisibility();
     if(showPoyntingCheck.checked) { clearPoyntingField(); updatePoyntingField(0); } else clearPoyntingField();
@@ -2198,15 +2093,11 @@ function loop(){
 }
 loop();
 
-const sceneWrap = document.getElementById('scene-wrap');
 window.onresize = ()=>{
-    const w = sceneWrap.clientWidth;
-    const h = sceneWrap.clientHeight;
-    camera.aspect = w/h;
+    camera.aspect = innerWidth/innerHeight;
     camera.updateProjectionMatrix();
-    renderer.setSize(w,h);
+    renderer.setSize(innerWidth,innerHeight);
 }
 </script>
-</div>
 </body>
 </html>

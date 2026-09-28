@@ -2,182 +2,724 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>3D 矩形波导 电磁场可视化（时变）</title>
 <style>
-body {margin:0;background:#080816;overflow:hidden;}
-canvas {display:block;}
-.info{position:absolute;top:20px;left:20px;color:#fff;background:rgba(0,0,0,0.6);padding:12px 16px;border-radius:8px;font-size:15px;z-index:10;max-width:340px;}
-.controls{position:absolute;bottom:20px;left:20px;color:#fff;background:rgba(0,0,0,0.6);padding:10px 16px;border-radius:8px;font-size:14px;z-index:10;}
-.legend{position:absolute;right:20px;color:#fff;background:rgba(0,0,0,0.6);padding:12px 16px;border-radius:8px;font-size:14px;z-index:10;line-height:1.6;}
-input,select{background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);border-radius:4px;padding:2px 6px;margin:0 4px;}
-input[type=number]{width:50px;}
-input[type=range]{width:100px;vertical-align:middle;}
-button{background:#3399ff;color:#fff;border:none;border-radius:4px;padding:4px 12px;cursor:pointer;margin-left:6px;}
-button:hover{background:#2277dd;}
-label{cursor:pointer;margin-right:8px;}
+    :root {
+        --ahnu-blue: #003d7a;
+        --ahnu-gold: #c9a227;
+    }
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    body {
+        font-family: 'Segoe UI', 'PingFang SC', Roboto, system-ui, -apple-system, sans-serif;
+        background: #0b1219;
+        color: #e8edf3;
+        height: 100vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+    .header {
+        background: linear-gradient(90deg, var(--ahnu-blue) 0%, #0056a3 100%);
+        color: white;
+        padding: 0 40px;
+        display: flex;
+        align-items: center;
+        height: 64px;
+        box-shadow: 0 4px 20px rgba(0, 61, 122, 0.25);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        flex-shrink: 0;
+    }
+    .header h1 {
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: 2px;
+    }
+    .header .back {
+        margin-left: auto;
+        color: white;
+        text-decoration: none;
+        font-size: 13px;
+        opacity: 0.85;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: opacity 0.2s;
+    }
+    .header .back:hover {
+        opacity: 1;
+    }
+    #app {
+        display: flex;
+        flex: 1;
+        width: 100%;
+        background: rgba(18, 28, 40, 0.75);
+        backdrop-filter: blur(6px);
+        overflow: hidden;
+    }
+    #canvas-wrap {
+        flex: 1;
+        position: relative;
+        background: #0a0f16;
+        overflow: hidden;
+    }
+    #canvas-wrap canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+    }
+    #phase-info {
+        position: absolute;
+        bottom: 16px;
+        left: 20px;
+        background: rgba(0, 0, 0, 0.55);
+        backdrop-filter: blur(4px);
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 400;
+        color: #a0b8d0;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        pointer-events: none;
+        user-select: none;
+    }
+    #legend-panel {
+        position: absolute;
+        top: 16px;
+        left: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        pointer-events: none;
+        z-index: 10;
+    }
+    .legend {
+        color: #fff;
+        background: rgba(12, 20, 30, 0.8);
+        backdrop-filter: blur(8px);
+        padding: 10px 14px;
+        border-radius: 10px;
+        font-size: 12px;
+        line-height: 1.5;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        max-width: 220px;
+    }
+    .legend b {
+        font-size: 12px;
+        color: #b0cce8;
+    }
+    .legend .gradient-bar {
+        display: flex;
+        align-items: center;
+        margin-top: 4px;
+    }
+    .legend .gradient-bar .bar {
+        width: 100px;
+        height: 10px;
+        margin: 0 6px;
+        border-radius: 2px;
+    }
+    .legend .bar-label {
+        text-align: center;
+        font-size: 11px;
+        margin-top: 2px;
+        color: #7a90aa;
+    }
+    #panel {
+        width: 340px;
+        min-width: 340px;
+        padding: 22px 20px 26px;
+        background: rgba(12, 20, 30, 0.85);
+        backdrop-filter: blur(12px);
+        border-left: 1px solid rgba(255, 255, 255, 0.05);
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+    #panel::-webkit-scrollbar {
+        width: 4px;
+    }
+    #panel::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 8px;
+    }
+    .panel-title {
+        font-size: 18px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        background: linear-gradient(135deg, #b0d0ff, #7a9eff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        padding-bottom: 6px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .section {
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 14px;
+        padding: 14px 16px;
+        border: 1px solid rgba(255, 255, 255, 0.04);
+        transition: border-color 0.2s;
+    }
+    .section:hover {
+        border-color: rgba(255, 255, 255, 0.08);
+    }
+    .section-label {
+        font-size: 13px;
+        font-weight: 500;
+        color: #9ab0cc;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .section-label .badge {
+        font-size: 10px;
+        background: rgba(255, 255, 255, 0.06);
+        padding: 0 10px;
+        border-radius: 12px;
+        color: #6a8aaa;
+    }
+    .btn-group {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .btn {
+        flex: 1;
+        min-width: 60px;
+        padding: 8px 12px;
+        border: none;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 500;
+        color: #e8edf3;
+        background: rgba(255, 255, 255, 0.06);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-align: center;
+        letter-spacing: 0.3px;
+        border: 1px solid transparent;
+    }
+    .btn:hover {
+        background: rgba(255, 255, 255, 0.12);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    .btn:active {
+        transform: scale(0.97);
+    }
+    .btn-primary {
+        background: linear-gradient(135deg, #2a4a7a, #1a3560);
+        border-color: rgba(255, 255, 255, 0.08);
+    }
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #3a5a8a, #2a4570);
+    }
+    .btn-secondary {
+        background: rgba(255, 255, 255, 0.04);
+    }
+    .btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.10);
+    }
+    .btn-active {
+        background: linear-gradient(135deg, #3a7aaa, #2a5a8a);
+        border-color: rgba(100, 180, 255, 0.3);
+        box-shadow: 0 0 16px rgba(60, 140, 255, 0.15);
+    }
+    .input-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-top: 6px;
+        flex-wrap: wrap;
+    }
+    .input-row label {
+        font-size: 12px;
+        color: #7a90aa;
+        min-width: 20px;
+    }
+    .input-field {
+        background: rgba(0, 0, 0, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        padding: 6px 10px;
+        color: #e8edf3;
+        font-size: 13px;
+        width: 100%;
+        transition: border-color 0.2s;
+        outline: none;
+        font-family: inherit;
+    }
+    .input-field:focus {
+        border-color: rgba(100, 160, 255, 0.4);
+        background: rgba(0, 0, 0, 0.5);
+    }
+    .input-field.small {
+        width: 60px;
+        flex-shrink: 0;
+    }
+    .input-field.coord {
+        width: 60px;
+        flex-shrink: 0;
+        text-align: center;
+    }
+    select.input-field {
+        width: auto;
+        flex: 1;
+        min-width: 60px;
+        cursor: pointer;
+    }
+    select.input-field option {
+        background: #0b1219;
+        color: #e8edf3;
+    }
+    .slider-group {
+        margin-top: 6px;
+    }
+    .slider-group label {
+        font-size: 12px;
+        color: #7a90aa;
+        display: flex;
+        justify-content: space-between;
+    }
+    .slider-group label span {
+        color: #b0c8e0;
+        font-weight: 500;
+    }
+    input[type="range"] {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        height: 4px;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.10);
+        outline: none;
+        margin: 6px 0 4px;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #5a8ad0, #3a6aaa);
+        cursor: pointer;
+        border: 2px solid rgba(255, 255, 255, 0.15);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        transition: 0.15s;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+        transform: scale(1.1);
+    }
+    input[type="range"]::-moz-range-thumb {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #5a8ad0, #3a6aaa);
+        cursor: pointer;
+        border: 2px solid rgba(255, 255, 255, 0.15);
+    }
+    .toggle-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: #c0d0e0;
+        padding: 6px 0;
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+    .toggle-label:hover {
+        color: #e8edf3;
+    }
+    .toggle-label input[type="checkbox"] {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 36px;
+        height: 20px;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.12);
+        position: relative;
+        cursor: pointer;
+        transition: background 0.25s;
+        flex-shrink: 0;
+        outline: none;
+        border: none;
+    }
+    .toggle-label input[type="checkbox"]::after {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #fff;
+        transition: transform 0.25s, background 0.25s;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+    .toggle-label input[type="checkbox"]:checked {
+        background: linear-gradient(135deg, #3a7aaa, #2a5a8a);
+    }
+    .toggle-label input[type="checkbox"]:checked::after {
+        transform: translateX(16px);
+    }
+    .toggle-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2px 12px;
+    }
+    #selectedInfo {
+        background: rgba(60, 120, 200, 0.10);
+        border: 1px solid rgba(100, 160, 255, 0.12);
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 13px;
+        color: #b0cce8;
+        min-height: 38px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+    .info-item {
+        background: rgba(0, 0, 0, 0.25);
+        border-radius: 8px;
+        padding: 8px 12px;
+        text-align: center;
+    }
+    .info-item .label {
+        font-size: 11px;
+        color: #6a80a0;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .info-item .value {
+        font-size: 16px;
+        font-weight: 600;
+        color: #d0e4ff;
+        margin-top: 2px;
+        font-variant-numeric: tabular-nums;
+    }
+    .info-item .value.warm {
+        color: #f0c060;
+    }
+    .info-item .value.cool {
+        color: #70b0f0;
+    }
+    @media (max-width: 900px) {
+        #app {
+            flex-direction: column;
+            height: auto;
+            width: 100vw;
+            backdrop-filter: none;
+        }
+        #panel {
+            width: 100%;
+            min-width: unset;
+            max-height: 45vh;
+            border-left: none;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 16px;
+        }
+        #canvas-wrap {
+            height: 55vh;
+        }
+        #legend-panel {
+            top: 8px;
+            left: 8px;
+            transform: scale(0.85);
+            transform-origin: top left;
+        }
+    }
+    @media (max-width: 500px) {
+        #panel {
+            padding: 12px;
+            gap: 10px;
+        }
+        .section {
+            padding: 10px 12px;
+        }
+        .btn {
+            font-size: 12px;
+            padding: 6px 10px;
+            min-width: 50px;
+        }
+    }
 </style>
 </head>
 <body>
-<div class="info" id="infoBox">
-<b> 安徽师范大学 3D TE₁₀ 波导电磁场（时变）</b><br>
-鼠标拖动旋转｜滚轮缩放
-</div>
-<div class="controls">
-模式: <select id="modeSel"><option value="TE">TE</option><option value="TM">TM</option></select>
-m: <input id="mInput" type="number" min="0" max="5" value="1">
-n: <input id="nInput" type="number" min="0" max="5" value="0">
-<button id="updateBtn">更新波模</button><br>
-时间相位: <span id="phase">0</span> rad | <button id="pauseBtn">⏸ 暂停</button><br>
-<label><input type="checkbox" id="showE" checked> 电场</label>
-<label><input type="checkbox" id="showM" checked> 磁场</label>
-<label><input type="checkbox" id="showCharge"> 壁面电荷</label>
-<label><input type="checkbox" id="showCurrent"> 管壁电流</label>
-<label><input type="checkbox" id="showGrid"> 空间网格</label><br>
-<label><input type="checkbox" id="showPoynting"> 坡印廷矢量</label><br>
 
-<div id="zSliceControl" style="margin-top:6px;">
-  <label><input type="checkbox" id="showZSlice"> 只显示z截面</label>
-  z位置(-6~6): <input id="zSliceInput" type="number" step="0.1" value="0" min="-6" max="6" style="width:60px;">
-</div>
+<header class="header">
+    <h1>📡 3D 矩形波导 · 电磁场可视化（时变）</h1>
+    <a class="back" href="index.html">← 返回实验大厅</a>
+</header>
 
-<div id="teEFieldModeControl" style="margin-top:6px;">
-  TE电场表达: <select id="teEFieldModeSel"><option value="arrow">箭头</option><option value="fieldline">场线</option></select>
-</div>
+<div id="app">
+    <div id="canvas-wrap">
+        <div id="phase-info">时间相位: <span id="phase">0</span> rad</div>
 
-<div id="teEDensityControl" style="margin-top:6px;">
-  TE电场线密度: <input type="range" id="teEDensity" min="1" max="50" step="1" value="5">
-  <span id="teEDensityVal">5</span>
-</div>
-<div id="teELengthControl" style="margin-top:6px;">
-  TE电场线长度: <input type="range" id="teELength" min="1" max="10" step="1" value="5">
-  <span id="teELengthVal">5</span>
-</div>
-<div id="teMDensityControl" style="margin-top:6px;display:none;">
-  TE磁力线密度: <input type="range" id="teMDensity" min="1" max="10" step="1" value="3">
-  <span id="teMDensityVal">3</span>
-</div>
+        <div id="legend-panel">
+            <div class="legend" id="fieldLegend">
+                <b>电场 |E|（暖色）</b>
+                <div class="gradient-bar">
+                    <span style="color:#ffdd00;font-size:16px;">■</span>
+                    <div class="bar" style="background:linear-gradient(to right, #ffdd00, #ff0000);"></div>
+                    <span style="color:#ff0000;font-size:16px;">■</span>
+                </div>
+                <div class="bar-label">弱 → 强</div>
+                <br>
+                <b>磁场 |H|（冷色）</b>
+                <div class="gradient-bar">
+                    <span style="color:#00aaff;font-size:16px;">■</span>
+                    <div class="bar" style="background:linear-gradient(to right, #00aaff, #6600ff);"></div>
+                    <span style="color:#6600ff;font-size:16px;">■</span>
+                </div>
+                <div class="bar-label">弱 → 强</div>
+            </div>
 
-<div id="chargeOpacityControl" style="margin-top:6px;display:none;">
-  壁面电荷不透明度: <input type="range" id="chargeOpacity" min="0.1" max="1.0" step="0.05" value="0.5">
-  <span id="chargeOpacityVal">0.50</span>
-</div>
-<div id="tmDensityControl" style="margin-top:6px;display:none;">
-  TM电场线密度: <input type="range" id="tmDensity" min="1" max="10" step="1" value="3">
-  <span id="tmDensityVal">3</span>
-</div>
-<div id="tmMDensityControl" style="margin-top:6px;display:none;">
-  TM磁力线密度: <input type="range" id="tmMDensity" min="1" max="10" step="1" value="3">
-  <span id="tmMDensityVal">3</span>
-</div>
-<div id="currentDensityControl" style="margin-top:6px;display:none;">
-  电流线密度: <input type="range" id="currentDensity" min="1" max="10" step="1" value="5">
-  <span id="currentDensityVal">5</span>
-</div>
-<div id="currentLengthControl" style="margin-top:6px;display:none;">
-  电流线长度: <input type="range" id="currentLength" min="1" max="10" step="1" value="5">
-  <span id="currentLengthVal">5</span>
-</div>
-<div id="poyntingDensityControl" style="margin-top:6px;display:none;">
-  坡印廷矢量密度: <input type="range" id="poyntingDensity" min="1" max="10" step="1" value="3">
-  <span id="poyntingDensityVal">3</span>
-</div>
-<div id="poyntingLengthControl" style="margin-top:6px;display:none;">
-  坡印廷矢量长度: <input type="range" id="poyntingLength" min="1" max="10" step="1" value="5">
-  <span id="poyntingLengthVal">5</span>
-</div>
-<div id="wallOpacityControl" style="margin-top:6px;">
-  管壁不透明度: <input type="range" id="wallOpacity" min="0" max="1.0" step="0.05" value="0">
-  <span id="wallOpacityVal">0.00</span>
-</div>
-<div style="margin-top:8px;border-top:1px solid rgba(255,255,255,0.2);padding-top:6px;">
-  <b>选点分析</b>（坐标）:
-  <button id="updateProbeBtn">更新探针</button>
-  <button id="clearPickBtn">清除选点</button>
-</div>
+            <div class="legend" id="chargeLegend" style="display:none;">
+                <b>壁面电荷密度 σ = ε₀Eₙ</b>
+                <div class="gradient-bar">
+                    <span style="color:#0000ff;font-size:16px;">■</span>
+                    <div class="bar" style="background:linear-gradient(to right, #0000ff, #ffffff, #ff0000);"></div>
+                    <span style="color:#ff0000;font-size:16px;">■</span>
+                </div>
+                <div class="bar-label">负 → 零 → 正</div>
+            </div>
 
-<div style="margin-top:8px;border-top:1px ;">
-  x(-3,3):<<input id="probeX" type="number" step="0.1" value="0">
-  y(0,2):<<input id="probeY" type="number" step="0.1" value="1">
-  z(-6,6):<<input id="probeZ" type="number" step="0.1" value="0">
-</div>
+            <div class="legend" id="poyntingLegend" style="display:none;">
+                <b>坡印廷矢量 S = E × H</b>
+                <div class="gradient-bar">
+                    <span style="color:#fff0f5;font-size:16px;">■</span>
+                    <div class="bar" style="background:linear-gradient(to right, #fff0f5, #ff88cc, #ff3399, #cc0066, #660066);"></div>
+                    <span style="color:#660066;font-size:16px;">■</span>
+                </div>
+                <div class="bar-label">弱 → 强</div>
+            </div>
 
-</div>
+            <div class="legend" id="currentLegend" style="display:none;">
+                <b>管壁电流密度 J = n̂×H</b>
+                <div class="gradient-bar">
+                    <span style="color:#eeffaa;font-size:16px;">■</span>
+                    <div class="bar" style="background:linear-gradient(to right, #eeffaa, #00ff44, #052805);"></div>
+                    <span style="color:#052805;font-size:16px;">■</span>
+                </div>
+                <div class="bar-label">弱 → 强</div>
+            </div>
 
-<div class="legend" id="fieldLegend" style="top:20px;">
-<b>电场 |E|（暖色）</b><br>
-<div style="display:flex;align-items:center;margin-top:6px;">
-  <span style="color:#ffdd00;font-size:18px;">■</span>
-  <div style="width:100px;height:10px;background:linear-gradient(to right, #ffdd00, #ff0000);margin:0 6px;border-radius:2px;"></div>
-  <span style="color:#ff0000;font-size:18px;">■</span>
-</div>
-<div style="text-align:center;font-size:12px;margin-top:2px;">弱 &nbsp;→&nbsp; 强</div>
-<br>
-<b>磁场 |H|（冷色）</b><br>
-<div style="display:flex;align-items:center;margin-top:6px;">
-  <span style="color:#00aaff;font-size:18px;">■</span>
-  <div style="width:100px;height:10px;background:linear-gradient(to right, #00aaff, #6600ff);margin:0 6px;border-radius:2px;"></div>
-  <span style="color:#6600ff;font-size:18px;">■</span>
-</div>
-<div style="text-align:center;font-size:12px;margin-top:2px;">弱 &nbsp;→&nbsp; 强</div>
-</div>
+            <div class="legend" id="probeLegend" style="display:none;">
+                <b>探针读数</b>
+                <div style="margin-top:4px;display:flex;align-items:center;gap:6px;">
+                    <span style="font-size:16px;">🔍</span>
+                    <span>白色球：探针位置</span>
+                </div>
+                <div style="margin-top:4px;display:flex;align-items:center;gap:6px;">
+                    <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:linear-gradient(to right, #0000ff, #ffffff, #ff0000);border:1px solid rgba(0,0,0,1);"></span>
+                    <span>球颜色/大小：壁面电荷密度 σ</span>
+                </div>
+                <div style="margin-top:4px;display:flex;align-items:center;gap:6px;">
+                    <span style="color:#00ff44;font-size:14px;">➜</span>
+                    <span>绿色箭头：局部电流密度 J</span>
+                </div>
+                <div style="margin-top:4px;display:flex;align-items:center;gap:6px;">
+                    <span style="color:#ff4444;font-size:14px;">➜</span>
+                    <span>红色箭头：瞬时电场 E</span>
+                </div>
+                <div style="margin-top:4px;display:flex;align-items:center;gap:6px;">
+                    <span style="color:#44aaff;font-size:14px;">➜</span>
+                    <span>蓝色箭头：瞬时磁场 H</span>
+                </div>
+                <div style="margin-top:4px;display:flex;align-items:center;gap:6px;">
+                    <span style="color:#ff3399;font-size:14px;">➜</span>
+                    <span>品红箭头：坡印廷矢量 S</span>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<div class="legend" id="chargeLegend" style="top:230px;display:none;">
-<b>壁面电荷密度 σ = ε₀Eₙ</b><br>
-<div style="display:flex;align-items:center;margin-top:6px;">
-  <span style="color:#0000ff;font-size:18px;">■</span>
-  <div style="width:100px;height:10px;background:linear-gradient(to right, #0000ff, #ffffff, #ff0000);margin:0 6px;border-radius:2px;"></div>
-  <span style="color:#ff0000;font-size:18px;">■</span>
-</div>
-<div style="text-align:center;font-size:12px;margin-top:2px;">负 &nbsp;→&nbsp; 零 &nbsp;→&nbsp; 正</div>
-</div>
+    <div id="panel">
+        <div class="panel-title">
+            📡 波导参数
+        </div>
 
-<div class="legend" id="poyntingLegend" style="top:350px;display:none;">
-<b>坡印廷矢量 S = E × H</b><br>
-<div style="display:flex;align-items:center;margin-top:6px;">
-  <span style="color:#fff0f5;font-size:18px;">■</span>
-  <div style="width:100px;height:10px;background:linear-gradient(to right, #fff0f5, #ff88cc, #ff3399, #cc0066, #660066);margin:0 6px;border-radius:2px;"></div>
-  <span style="color:#660066;font-size:18px;">■</span>
-</div>
-<div style="text-align:center;font-size:12px;margin-top:2px;">弱 &nbsp;→&nbsp; 强</div>
-</div>
+        <!-- 波模选择 -->
+        <div class="section">
+            <div class="section-label">🌀 波模选择</div>
+            <div class="input-row">
+                <label>模式</label>
+                <select id="modeSel" class="input-field">
+                    <option value="TE">TE</option>
+                    <option value="TM">TM</option>
+                </select>
+            </div>
+            <div class="input-row">
+                <label>m</label>
+                <input id="mInput" type="number" min="0" max="5" value="1" class="input-field coord">
+                <label>n</label>
+                <input id="nInput" type="number" min="0" max="5" value="0" class="input-field coord">
+            </div>
+            <div class="btn-group" style="margin-top:8px;">
+                <button id="updateBtn" class="btn btn-primary">更新波模</button>
+            </div>
+        </div>
 
-<div class="legend" id="currentLegend" style="top:470px;display:none;">
-<b>管壁电流密度 J = n̂×H</b><br>
-<div style="display:flex;align-items:center;margin-top:6px;">
-  <span style="color:#eeffaa;font-size:18px;">■</span>
-  <div style="width:100px;height:10px;background:linear-gradient(to right, #eeffaa, #00ff44, #052805);margin:0 6px;border-radius:2px;"></div>
-  <span style="color:#052805;font-size:18px;">■</span>
-</div>
-<div style="text-align:center;font-size:12px;margin-top:2px;">弱 &nbsp;→&nbsp; 强</div>
-</div>
+        <!-- 时间控制 -->
+        <div class="section">
+            <div class="section-label">⏱️ 时间控制</div>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="label">时间相位</div>
+                    <div class="value cool" id="phaseDisplay">0.00</div>
+                </div>
+                <div class="info-item">
+                    <div class="label">状态</div>
+                    <div class="value" id="runState" style="font-size:14px;">运行中</div>
+                </div>
+            </div>
+            <div class="btn-group" style="margin-top:8px;">
+                <button id="pauseBtn" class="btn btn-secondary">⏸ 暂停</button>
+            </div>
+        </div>
 
-<!-- 新增：探针图例 -->
-<div class="legend" id="probeLegend" style="top:470px;display:none;">
-<b>探针读数</b><br>
-<div style="margin-top:6px;display:flex;align-items:center;">
-  <span style="font-size:20px;margin-right:6px;">🔍</span>
-  <span>白色球：探针位置</span>
-</div>
-<div style="margin-top:4px;display:flex;align-items:center;">
-  <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:linear-gradient(to right, #0000ff, #ffffff, #ff0000);margin-right:6px;border:1px solid rgba(0,0,0,1);"></span>
-  <span>球颜色/大小：壁面电荷密度 σ</span>
-</div>
-<div style="margin-top:4px;display:flex;align-items:center;">
-  <span style="color:#00ff44;font-size:18px;margin-right:6px;">➜</span>
-  <span>绿色箭头：局部电流密度 J</span>
-</div>
-<div style="margin-top:4px;display:flex;align-items:center;">
-  <span style="color:#ff4444;font-size:18px;margin-right:6px;">➜</span>
-  <span>红色箭头：瞬时电场 E</span>
-</div>
-<div style="margin-top:4px;display:flex;align-items:center;">
-  <span style="color:#44aaff;font-size:18px;margin-right:6px;">➜</span>
-  <span>蓝色箭头：瞬时磁场 H</span>
-</div>
-<div style="margin-top:4px;display:flex;align-items:center;">
-  <span style="color:#ff3399;font-size:18px;margin-right:6px;">➜</span>
-  <span>品红箭头：坡印廷矢量 S = E×H</span>
-</div>
+        <!-- 显示开关 -->
+        <div class="section">
+            <div class="section-label">👁️ 显示内容</div>
+            <div class="toggle-grid">
+                <label class="toggle-label"><input type="checkbox" id="showE" checked> 电场</label>
+                <label class="toggle-label"><input type="checkbox" id="showM" checked> 磁场</label>
+                <label class="toggle-label"><input type="checkbox" id="showCharge"> 壁面电荷</label>
+                <label class="toggle-label"><input type="checkbox" id="showCurrent"> 管壁电流</label>
+                <label class="toggle-label"><input type="checkbox" id="showGrid"> 空间网格</label>
+                <label class="toggle-label"><input type="checkbox" id="showPoynting"> 坡印廷</label>
+            </div>
+        </div>
+
+        <!-- z 截面 -->
+        <div class="section" id="zSliceControl">
+            <div class="section-label">✂️ z 截面截取</div>
+            <label class="toggle-label"><input type="checkbox" id="showZSlice"> 只显示 z 截面</label>
+            <div class="slider-group">
+                <label>z 位置 <span id="zSliceVal">0.0</span></label>
+                <input id="zSliceInput" type="range" min="-6" max="6" step="0.1" value="0">
+            </div>
+        </div>
+
+        <!-- 电场参数 -->
+        <div class="section" id="eFieldSection">
+            <div class="section-label">⚡ 电场参数</div>
+
+            <div id="teEFieldModeControl">
+                <div class="input-row">
+                    <label>TE电场表达</label>
+                    <select id="teEFieldModeSel" class="input-field">
+                        <option value="arrow">箭头</option>
+                        <option value="fieldline">场线</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="teEDensityControl" class="slider-group">
+                <label>TE电场线密度 <span id="teEDensityVal">5</span></label>
+                <input type="range" id="teEDensity" min="1" max="50" step="1" value="5">
+            </div>
+            <div id="teELengthControl" class="slider-group">
+                <label>TE电场线长度 <span id="teELengthVal">5</span></label>
+                <input type="range" id="teELength" min="1" max="10" step="1" value="5">
+            </div>
+            <div id="tmDensityControl" class="slider-group" style="display:none;">
+                <label>TM电场线密度 <span id="tmDensityVal">3</span></label>
+                <input type="range" id="tmDensity" min="1" max="10" step="1" value="3">
+            </div>
+        </div>
+
+        <!-- 磁场参数 -->
+        <div class="section" id="mFieldSection">
+            <div class="section-label">🧲 磁场参数</div>
+            <div id="teMDensityControl" class="slider-group">
+                <label>TE磁力线密度 <span id="teMDensityVal">3</span></label>
+                <input type="range" id="teMDensity" min="1" max="10" step="1" value="3">
+            </div>
+            <div id="tmMDensityControl" class="slider-group" style="display:none;">
+                <label>TM磁力线密度 <span id="tmMDensityVal">3</span></label>
+                <input type="range" id="tmMDensity" min="1" max="10" step="1" value="3">
+            </div>
+        </div>
+
+        <!-- 壁面电荷 / 电流 -->
+        <div class="section" id="chargeCurrentSection">
+            <div class="section-label">🔋 壁面电荷 / 电流</div>
+
+            <div id="chargeOpacityControl" class="slider-group" style="display:none;">
+                <label>壁面电荷不透明度 <span id="chargeOpacityVal">0.50</span></label>
+                <input type="range" id="chargeOpacity" min="0.1" max="1.0" step="0.05" value="0.5">
+            </div>
+
+            <div id="currentDensityControl" class="slider-group" style="display:none;">
+                <label>电流线密度 <span id="currentDensityVal">5</span></label>
+                <input type="range" id="currentDensity" min="1" max="10" step="1" value="5">
+            </div>
+            <div id="currentLengthControl" class="slider-group" style="display:none;">
+                <label>电流线长度 <span id="currentLengthVal">5</span></label>
+                <input type="range" id="currentLength" min="1" max="10" step="1" value="5">
+            </div>
+        </div>
+
+        <!-- 坡印廷参数 -->
+        <div class="section" id="poyntingSection">
+            <div class="section-label">💫 坡印廷矢量参数</div>
+            <div id="poyntingDensityControl" class="slider-group" style="display:none;">
+                <label>坡印廷矢量密度 <span id="poyntingDensityVal">3</span></label>
+                <input type="range" id="poyntingDensity" min="1" max="10" step="1" value="3">
+            </div>
+            <div id="poyntingLengthControl" class="slider-group" style="display:none;">
+                <label>坡印廷矢量长度 <span id="poyntingLengthVal">5</span></label>
+                <input type="range" id="poyntingLength" min="1" max="10" step="1" value="5">
+            </div>
+        </div>
+
+        <!-- 管壁外观 -->
+        <div class="section">
+            <div class="section-label">🎨 管壁外观</div>
+            <div id="wallOpacityControl" class="slider-group">
+                <label>管壁不透明度 <span id="wallOpacityVal">0.00</span></label>
+                <input type="range" id="wallOpacity" min="0" max="1.0" step="0.05" value="0">
+            </div>
+        </div>
+
+        <!-- 选点分析 -->
+        <div class="section">
+            <div class="section-label">🔍 选点分析</div>
+            <div class="btn-group">
+                <button id="updateProbeBtn" class="btn btn-primary">更新探针</button>
+                <button id="clearPickBtn" class="btn btn-secondary">清除选点</button>
+            </div>
+            <div class="input-row">
+                <label>x</label>
+                <input id="probeX" type="number" step="0.1" value="0" class="input-field coord" placeholder="-3~3">
+                <label>y</label>
+                <input id="probeY" type="number" step="0.1" value="1" class="input-field coord" placeholder="0~2">
+                <label>z</label>
+                <input id="probeZ" type="number" step="0.1" value="0" class="input-field coord" placeholder="-6~6">
+            </div>
+        </div>
+    </div>
 </div>
 
 <script type="importmap">
@@ -197,7 +739,7 @@ scene.background = new THREE.Color("#080816");
 const camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.1, 2000);
 const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(innerWidth,innerHeight);
-document.body.appendChild(renderer.domElement);
+document.getElementById('canvas-wrap').appendChild(renderer.domElement);
 
 camera.position.set(14,9,16);
 const controls = new OrbitControls(camera,renderer.domElement);
@@ -212,10 +754,9 @@ scene.add(dirLight);
 const a = 6, b = 2, L = 12;
 const boxGeo = new THREE.BoxGeometry(a,b,L);
 
-// 修改：分离侧面材质与端面材质，两端开口始终透明
 const sideMat = new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,depthWrite:false});
 const endMat = new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,depthWrite:false});
-const boxMat = [sideMat, sideMat, sideMat, sideMat, endMat, endMat]; // 0:right, 1:left, 2:top, 3:bottom, 4:front, 5:back
+const boxMat = [sideMat, sideMat, sideMat, sideMat, endMat, endMat];
 
 const waveguide = new THREE.Mesh(boxGeo,boxMat);
 waveguide.position.y = b/2;
@@ -251,7 +792,6 @@ const mInput = document.getElementById('mInput');
 const nInput = document.getElementById('nInput');
 const updateBtn = document.getElementById('updateBtn');
 const pauseBtn = document.getElementById('pauseBtn');
-const infoBox = document.getElementById('infoBox');
 const showECheck = document.getElementById('showE');
 const showMCheck = document.getElementById('showM');
 const showChargeCheck = document.getElementById('showCharge');
@@ -310,6 +850,9 @@ const teMDensityControl = document.getElementById('teMDensityControl');
 const teMDensityInput = document.getElementById('teMDensity');
 const teMDensityVal = document.getElementById('teMDensityVal');
 
+const phaseDisplay = document.getElementById('phaseDisplay');
+const runState = document.getElementById('runState');
+
 function updateLegendVisibility() {
     fieldLegend.style.display = (showECheck.checked || showMCheck.checked) ? 'block' : 'none';
     chargeLegend.style.display = showChargeCheck.checked ? 'block' : 'none';
@@ -331,14 +874,13 @@ function updateLegendVisibility() {
     tmMDensityControl.style.display = (mode === 'TM' && showMCheck.checked) ? 'block' : 'none';
     currentDensityControl.style.display = showCurrentCheck.checked ? 'block' : 'none';
     currentLengthControl.style.display = showCurrentCheck.checked ? 'block' : 'none';
-
-    // 探针图例随 pickedPoint 状态自动显隐
     probeLegend.style.display = pickedPoint ? 'block' : 'none';
 }
 
 pauseBtn.addEventListener('click', () => {
     isRunning = !isRunning;
     pauseBtn.textContent = isRunning ? '⏸ 暂停' : '▶ 继续';
+    runState.textContent = isRunning ? '运行中' : '已暂停';
 });
 
 modeSel.addEventListener('change', () => {
@@ -355,12 +897,6 @@ updateBtn.addEventListener('click', () => {
     if(mode === 'TE' && (m === 0 || n === 0)) {
         teEFieldMode = 'arrow';
         teEFieldModeSel.value = 'arrow';
-    }
-
-    if(mode === 'TE') {
-        infoBox.innerHTML = `<b>3D TE<sub>${m}${n}</sub> 波导电磁场（时变）</b><br>鼠标拖动旋转｜滚轮缩放`;
-    } else {
-        infoBox.innerHTML = `<b>3D TM<sub>${m}${n}</sub> 波导电磁场（时变）</b><br>鼠标拖动旋转｜滚轮缩放`;
     }
 
     time = 0;
@@ -420,6 +956,7 @@ zSliceInput.addEventListener('input', () => {
     if(isNaN(val)) val = 0;
     val = Math.max(-L/2, Math.min(L/2, val));
     zSliceValue = val;
+    document.getElementById('zSliceVal').textContent = val.toFixed(1);
     if(showZSlice) {
         if(mode === 'TE' && showECheck.checked) updateEField(omega * time);
         if(mode === 'TM' && showMCheck.checked) updateMField(omega * time);
@@ -458,7 +995,6 @@ currentLengthInput.addEventListener('input', () => {
     if(showCurrentCheck.checked) updateCurrentField(omega * time);
 });
 
-// 修改：只更新侧面材质（index 0-3），两端开口（index 4-5）始终保持透明
 wallOpacityInput.addEventListener('input', () => {
     wallOpacity = parseFloat(wallOpacityInput.value);
     wallOpacityVal.textContent = wallOpacity.toFixed(2);
@@ -513,7 +1049,7 @@ function setPickedPoint(p) {
     probeMarker.position.copy(p);
     scene.add(probeMarker);
 
-    updateLegendVisibility(); // 显示探针图例
+    updateLegendVisibility();
     updateFieldProbe(omega * time);
 }
 
@@ -556,8 +1092,6 @@ function updateFieldProbe(phase) {
 
     const eVec = new THREE.Vector3(ex, ey, ez);
     const hVec = new THREE.Vector3(hx, hy, hz);
-
-    // 计算坡印廷矢量 S = E × H
     const sVec = new THREE.Vector3().crossVectors(eVec, hVec);
     const sMag = sVec.length();
 
@@ -584,7 +1118,6 @@ function updateFieldProbe(phase) {
         scene.add(probeHArrow);
     }
 
-    // 坡印廷矢量箭头（固定颜色，不随大小变化）
     if(sMag > 0.005) {
         const sDir = sVec.clone().normalize();
         const sLen = Math.min(sMag * 2.5, 3.0);
@@ -698,7 +1231,7 @@ function clearPickedPoint() {
     disposeArrowHelper(probeJArrow); probeJArrow = null;
     disposeArrowHelper(probeSArrow); probeSArrow = null;
     pickedPoint = null;
-    updateLegendVisibility(); // 隐藏探针图例
+    updateLegendVisibility();
 }
 
 updateProbeBtn.addEventListener('click', () => {
@@ -970,7 +1503,6 @@ function updateEField_TM(phase){
         }
     }
 
-    // 导管边缘（角线）种子点
     for(let z = -L/2 + zStep/2; z <= L/2 - zStep/2; z += zStep){
         seeds.push({x: -a/2 + 0.05, y: 0.05, z, dir: 1});
         seeds.push({x: -a/2 + 0.05, y: b - 0.05, z, dir: 1});
@@ -978,7 +1510,6 @@ function updateEField_TM(phase){
         seeds.push({x: a/2 - 0.05, y: b - 0.05, z, dir: -1});
     }
 
-    // z方向端面边缘种子点
     for(let y = 0.08; y <= b - 0.08; y += 0.15){
         for(let x = -a/2 + 0.1; x <= a/2 - 0.1; x += 0.2){
             seeds.push({x, y, z: -L/2 + 0.05, dir: 1});
@@ -1086,7 +1617,6 @@ function drawEField_TE_fieldline(phase) {
         }
     }
 
-    // 导管边缘（角线）种子点
     for(const z of zList) {
         const exBL = Ex_TE(-a/2 + 0.03, 0.03, z, phase);
         seeds.push({x: -a/2 + 0.03, y: 0.03, z, dir: (exBL >= 0 && m > 0 ? 1 : -1)});
@@ -1098,7 +1628,6 @@ function drawEField_TE_fieldline(phase) {
         seeds.push({x: a/2 - 0.03, y: b - 0.03, z, dir: (exTR <= 0 && m > 0 ? 1 : -1)});
     }
 
-    // z方向端面边缘种子点
     if (!showZSlice) {
         for(let y = 0.1; y <= b - 0.1; y += 0.2){
             for(let x = -a/2 + 0.1; x <= a/2 - 0.1; x += 0.3){
@@ -1496,8 +2025,6 @@ function updateMField(phase){
     }
 }
 
-
-// ==================== 坡印廷矢量 S = E × H ====================
 let poyntingObjects=[];
 function clearPoyntingField(){
     for(const obj of poyntingObjects){
@@ -1510,8 +2037,6 @@ function clearPoyntingField(){
 
 function getPoyntingColor(val, maxVal){
     const t = Math.min(val/maxVal, 1.0);
-    // RdPu colormap: 浅粉白 -> 粉红 -> 玫红 -> 紫红 -> 深紫
-    // 使用分段 RGB 插值模拟 RdPu
     let r, g, b;
     if(t < 0.25){
         const s = t / 0.25;
@@ -1541,7 +2066,6 @@ function updatePoyntingField(phase){
     let globalMaxS = 0;
     const samplePts = [];
 
-    // 采样计算全局最大值
     for(let z = -L/2 + 0.3; z <= L/2 - 0.3; z += zStep){
         for(let y = 0.15; y <= b - 0.15; y += yStep){
             for(let x = -a/2 + 0.3; x <= a/2 - 0.3; x += xStep){
@@ -1568,11 +2092,9 @@ function updatePoyntingField(phase){
 
     if(globalMaxS < 0.001) return;
 
-    // 阈值过滤，避免绘制过弱的箭头
     const threshold = globalMaxS * 0.05;
     const minDist = Math.max(0.5 / densityFactor, 0.15);
 
-    // 按强度排序，优先保留强点
     samplePts.sort((a,b) => b.sMag - a.sMag);
 
     const filtered = [];
@@ -1722,30 +2244,25 @@ function updateCurrentField_TE(phase){
         }
     }
 
-    // 导管边缘（角线）电流采样
     for(let z=-L/2+0.3; z <= L/2-0.3; z += zs){
-        // 左壁面 y=0 和 y=b 边缘
         const hyL0 = Hy_TE(-a/2, 0, z, phase), hzL0 = Hz_TE(-a/2, 0, z, phase);
         const jyL0 = -hzL0, jzL0 = hyL0, magL0 = Math.sqrt(jyL0*jyL0 + jzL0*jzL0);
         if(magL0 > 0.05) addCurrentArrowWithColor(new THREE.Vector3(-a/2 - 0.12, 0, z), new THREE.Vector3(0, jyL0, jzL0), magL0, maxJ, 0.12, 0.06);
         const hyLb = Hy_TE(-a/2, b, z, phase), hzLb = Hz_TE(-a/2, b, z, phase);
         const jyLb = -hzLb, jzLb = hyLb, magLb = Math.sqrt(jyLb*jyLb + jzLb*jzLb);
         if(magLb > 0.05) addCurrentArrowWithColor(new THREE.Vector3(-a/2 - 0.12, b, z), new THREE.Vector3(0, jyLb, jzLb), magLb, maxJ, 0.12, 0.06);
-        // 右壁面 y=0 和 y=b 边缘
         const hyR0 = Hy_TE(a/2, 0, z, phase), hzR0 = Hz_TE(a/2, 0, z, phase);
         const jyR0 = hzR0, jzR0 = -hyR0, magR0 = Math.sqrt(jyR0*jyR0 + jzR0*jzR0);
         if(magR0 > 0.05) addCurrentArrowWithColor(new THREE.Vector3(a/2 + 0.12, 0, z), new THREE.Vector3(0, jyR0, jzR0), magR0, maxJ, 0.12, 0.06);
         const hyRb = Hy_TE(a/2, b, z, phase), hzRb = Hz_TE(a/2, b, z, phase);
         const jyRb = hzRb, jzRb = -hyRb, magRb = Math.sqrt(jyRb*jyRb + jzRb*jzRb);
         if(magRb > 0.05) addCurrentArrowWithColor(new THREE.Vector3(a/2 + 0.12, b, z), new THREE.Vector3(0, jyRb, jzRb), magRb, maxJ, 0.12, 0.06);
-        // 底壁面 x=-a/2 和 x=a/2 边缘
         const hxB0 = Hx_TE(-a/2, 0, z, phase), hzB0 = Hz_TE(-a/2, 0, z, phase);
         const jxB0 = hzB0, jzB0 = -hxB0, magB0 = Math.sqrt(jxB0*jxB0 + jzB0*jzB0);
         if(magB0 > 0.05) addCurrentArrowWithColor(new THREE.Vector3(-a/2, -0.12, z), new THREE.Vector3(jxB0, 0, jzB0), magB0, maxJ, 0.12, 0.06);
         const hxBa = Hx_TE(a/2, 0, z, phase), hzBa = Hz_TE(a/2, 0, z, phase);
         const jxBa = hzBa, jzBa = -hxBa, magBa = Math.sqrt(jxBa*jxBa + jzBa*jzBa);
         if(magBa > 0.05) addCurrentArrowWithColor(new THREE.Vector3(a/2, -0.12, z), new THREE.Vector3(jxBa, 0, jzBa), magBa, maxJ, 0.12, 0.06);
-        // 顶壁面 x=-a/2 和 x=a/2 边缘
         const hxT0 = Hx_TE(-a/2, b, z, phase), hzT0 = Hz_TE(-a/2, b, z, phase);
         const jxT0 = -hzT0, jzT0 = hxT0, magT0 = Math.sqrt(jxT0*jxT0 + jzT0*jzT0);
         if(magT0 > 0.05) addCurrentArrowWithColor(new THREE.Vector3(-a/2, b + 0.12, z), new THREE.Vector3(jxT0, 0, jzT0), magT0, maxJ, 0.12, 0.06);
@@ -1818,24 +2335,19 @@ function updateCurrentField_TM(phase){
         }
     }
 
-    // 导管边缘（角线）电流采样
     for(let z=-L/2+0.3; z <= L/2-0.3; z += zs){
-        // 左壁面 y=0 和 y=b 边缘
         const hyL0=Hy_TM(-a/2,0,z,phase), jzL0=hyL0, magL0=Math.abs(jzL0);
         if(magL0 > 0.05){ const dirL0=jzL0>=0?new THREE.Vector3(0,0,1):new THREE.Vector3(0,0,-1); addCurrentArrowWithColor(new THREE.Vector3(-a/2-0.12,0,z), dirL0, magL0, maxJ, 0.18, 0.09); }
         const hyLb=Hy_TM(-a/2,b,z,phase), jzLb=hyLb, magLb=Math.abs(jzLb);
         if(magLb > 0.05){ const dirLb=jzLb>=0?new THREE.Vector3(0,0,1):new THREE.Vector3(0,0,-1); addCurrentArrowWithColor(new THREE.Vector3(-a/2-0.12,b,z), dirLb, magLb, maxJ, 0.18, 0.09); }
-        // 右壁面 y=0 和 y=b 边缘
         const hyR0=Hy_TM(a/2,0,z,phase), jzR0=-hyR0, magR0=Math.abs(jzR0);
         if(magR0 > 0.05){ const dirR0=jzR0>=0?new THREE.Vector3(0,0,1):new THREE.Vector3(0,0,-1); addCurrentArrowWithColor(new THREE.Vector3(a/2+0.12,0,z), dirR0, magR0, maxJ, 0.18, 0.09); }
         const hyRb=Hy_TM(a/2,b,z,phase), jzRb=-hyRb, magRb=Math.abs(jzRb);
         if(magRb > 0.05){ const dirRb=jzRb>=0?new THREE.Vector3(0,0,1):new THREE.Vector3(0,0,-1); addCurrentArrowWithColor(new THREE.Vector3(a/2+0.12,b,z), dirRb, magRb, maxJ, 0.18, 0.09); }
-        // 底壁面 x=-a/2 和 x=a/2 边缘
         const hxB0=Hx_TM(-a/2,0,z,phase), jzB0=-hxB0, magB0=Math.abs(jzB0);
         if(magB0 > 0.05){ const dirB0=jzB0>=0?new THREE.Vector3(0,0,1):new THREE.Vector3(0,0,-1); addCurrentArrowWithColor(new THREE.Vector3(-a/2,-0.12,z), dirB0, magB0, maxJ, 0.18, 0.09); }
         const hxBa=Hx_TM(a/2,0,z,phase), jzBa=-hxBa, magBa=Math.abs(jzBa);
         if(magBa > 0.05){ const dirBa=jzBa>=0?new THREE.Vector3(0,0,1):new THREE.Vector3(0,0,-1); addCurrentArrowWithColor(new THREE.Vector3(a/2,-0.12,z), dirBa, magBa, maxJ, 0.18, 0.09); }
-        // 顶壁面 x=-a/2 和 x=a/2 边缘
         const hxT0=Hx_TM(-a/2,b,z,phase), jzT0=hxT0, magT0=Math.abs(jzT0);
         if(magT0 > 0.05){ const dirT0=jzT0>=0?new THREE.Vector3(0,0,1):new THREE.Vector3(0,0,-1); addCurrentArrowWithColor(new THREE.Vector3(-a/2,b+0.12,z), dirT0, magT0, maxJ, 0.18, 0.09); }
         const hxTa=Hx_TM(a/2,b,z,phase), jzTa=hxTa, magTa=Math.abs(jzTa);
@@ -1915,7 +2427,7 @@ function updateChargeCanvas(item, phase){
             } else {
                 if(type==='left' || type==='right'){
                     const cos_val = Math.cos(mPIa*(xw+a/2));
-                    const ex_te = cos_val*Math.sin(nPIb*yw)*Math.sin(phase-beta*zw);
+                    const ex_te = -cos_val*Math.sin(nPIb*yw)*Math.sin(phase-beta*zw);
                     rho = (type==='left') ? ex_te : -ex_te;
                 } else {
                     const cos_val = Math.cos(nPIb*yw);
@@ -2076,7 +2588,7 @@ function updateChargeField(phase){
 
 if(showGridCheck.checked) createWaveguideGrid();
 updateEField(0); updateMField(0); updateLegendVisibility();
-    if(showPoyntingCheck.checked) { clearPoyntingField(); updatePoyntingField(0); } else clearPoyntingField();
+if(showPoyntingCheck.checked) { clearPoyntingField(); updatePoyntingField(0); } else clearPoyntingField();
 
 function loop(){
     requestAnimationFrame(loop);
@@ -2087,16 +2599,19 @@ function loop(){
         updateChargeField(phase); updateCurrentField(phase);
         if(showPoyntingCheck.checked) updatePoyntingField(phase); else clearPoyntingField();
         if(pickedPoint) updateFieldProbe(phase);
-        document.getElementById('phase').textContent = phase.toFixed(2);
+        phaseDisplay.textContent = phase.toFixed(2);
     }
     controls.update(); renderer.render(scene,camera);
 }
 loop();
 
 window.onresize = ()=>{
-    camera.aspect = innerWidth/innerHeight;
+    const wrap = document.getElementById('canvas-wrap');
+    const w = wrap.clientWidth;
+    const h = wrap.clientHeight;
+    camera.aspect = w/h;
     camera.updateProjectionMatrix();
-    renderer.setSize(innerWidth,innerHeight);
+    renderer.setSize(w,h);
 }
 </script>
 </body>

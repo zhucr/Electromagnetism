@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>3D 矩形波导 电磁场可视化（时变）</title>
 <style>
     :root {
@@ -13,44 +13,54 @@
         margin: 0;
         padding: 0;
         box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+    }
+    html, body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
     }
     body {
         font-family: 'Segoe UI', 'PingFang SC', Roboto, system-ui, -apple-system, sans-serif;
         background: #0b1219;
         color: #e8edf3;
         height: 100vh;
-        overflow: hidden;
+        height: 100dvh;
         display: flex;
         flex-direction: column;
     }
     .header {
         background: linear-gradient(90deg, var(--ahnu-blue) 0%, #0056a3 100%);
         color: white;
-        padding: 0 40px;
+        padding: 0 20px;
         display: flex;
         align-items: center;
-        height: 64px;
+        height: 52px;
         box-shadow: 0 4px 20px rgba(0, 61, 122, 0.25);
-        position: sticky;
-        top: 0;
+        position: relative;
         z-index: 100;
         flex-shrink: 0;
     }
     .header h1 {
-        font-size: 18px;
+        font-size: 15px;
         font-weight: 700;
-        letter-spacing: 2px;
+        letter-spacing: 1px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     .header .back {
         margin-left: auto;
         color: white;
         text-decoration: none;
-        font-size: 13px;
+        font-size: 12px;
         opacity: 0.85;
         display: flex;
         align-items: center;
         gap: 6px;
         transition: opacity 0.2s;
+        flex-shrink: 0;
+        padding-left: 12px;
     }
     .header .back:hover {
         opacity: 1;
@@ -60,58 +70,65 @@
         flex: 1;
         width: 100%;
         background: rgba(18, 28, 40, 0.75);
-        backdrop-filter: blur(6px);
         overflow: hidden;
+        position: relative;
+        min-height: 0;
     }
     #canvas-wrap {
         flex: 1;
         position: relative;
         background: #0a0f16;
         overflow: hidden;
+        min-height: 0;
     }
     #canvas-wrap canvas {
         display: block;
         width: 100%;
         height: 100%;
+        touch-action: none;
     }
     #phase-info {
         position: absolute;
-        bottom: 16px;
-        left: 20px;
+        bottom: 12px;
+        left: 12px;
         background: rgba(0, 0, 0, 0.55);
         backdrop-filter: blur(4px);
-        padding: 6px 16px;
+        -webkit-backdrop-filter: blur(4px);
+        padding: 5px 14px;
         border-radius: 20px;
-        font-size: 13px;
-        font-weight: 400;
+        font-size: 12px;
         color: #a0b8d0;
         border: 1px solid rgba(255, 255, 255, 0.06);
         pointer-events: none;
         user-select: none;
+        z-index: 5;
     }
     #legend-panel {
         position: absolute;
-        top: 16px;
-        left: 20px;
+        top: 10px;
+        left: 10px;
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 6px;
         pointer-events: none;
-        z-index: 10;
+        z-index: 5;
+        max-height: calc(100% - 80px);
+        overflow: hidden;
     }
     .legend {
         color: #fff;
         background: rgba(12, 20, 30, 0.8);
         backdrop-filter: blur(8px);
-        padding: 10px 14px;
+        -webkit-backdrop-filter: blur(8px);
+        padding: 8px 12px;
         border-radius: 10px;
-        font-size: 12px;
+        font-size: 11px;
         line-height: 1.5;
         border: 1px solid rgba(255, 255, 255, 0.06);
-        max-width: 220px;
+        max-width: 200px;
     }
     .legend b {
-        font-size: 12px;
+        font-size: 11px;
         color: #b0cce8;
     }
     .legend .gradient-bar {
@@ -120,14 +137,14 @@
         margin-top: 4px;
     }
     .legend .gradient-bar .bar {
-        width: 100px;
-        height: 10px;
-        margin: 0 6px;
+        width: 80px;
+        height: 8px;
+        margin: 0 4px;
         border-radius: 2px;
     }
     .legend .bar-label {
         text-align: center;
-        font-size: 11px;
+        font-size: 10px;
         margin-top: 2px;
         color: #7a90aa;
     }
@@ -137,6 +154,7 @@
         padding: 22px 20px 26px;
         background: rgba(12, 20, 30, 0.85);
         backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
         border-left: 1px solid rgba(255, 255, 255, 0.05);
         overflow-y: auto;
         display: flex;
@@ -157,6 +175,7 @@
         background: linear-gradient(135deg, #b0d0ff, #7a9eff);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
+        background-clip: text;
         padding-bottom: 6px;
         border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         display: flex;
@@ -310,8 +329,8 @@
     input[type="range"]::-webkit-slider-thumb {
         -webkit-appearance: none;
         appearance: none;
-        width: 16px;
-        height: 16px;
+        width: 18px;
+        height: 18px;
         border-radius: 50%;
         background: linear-gradient(135deg, #5a8ad0, #3a6aaa);
         cursor: pointer;
@@ -323,8 +342,8 @@
         transform: scale(1.1);
     }
     input[type="range"]::-moz-range-thumb {
-        width: 16px;
-        height: 16px;
+        width: 18px;
+        height: 18px;
         border-radius: 50%;
         background: linear-gradient(135deg, #5a8ad0, #3a6aaa);
         cursor: pointer;
@@ -380,19 +399,6 @@
         grid-template-columns: 1fr 1fr;
         gap: 2px 12px;
     }
-    #selectedInfo {
-        background: rgba(60, 120, 200, 0.10);
-        border: 1px solid rgba(100, 160, 255, 0.12);
-        border-radius: 10px;
-        padding: 10px 12px;
-        font-size: 13px;
-        color: #b0cce8;
-        min-height: 38px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
-    }
     .info-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -423,43 +429,138 @@
     .info-item .value.cool {
         color: #70b0f0;
     }
+
+    /* ============ 移动端面板切换按钮 ============ */
+    #panel-toggle {
+        display: none;
+        position: absolute;
+        bottom: 16px;
+        right: 16px;
+        z-index: 50;
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #3a7aaa, #2a5a8a);
+        color: #fff;
+        border: 1px solid rgba(100, 180, 255, 0.4);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 20px rgba(60, 140, 255, 0.25);
+        font-size: 22px;
+        cursor: pointer;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.2s, background 0.2s;
+    }
+    #panel-toggle:active {
+        transform: scale(0.92);
+    }
+
+    /* ============ 移动端布局 ============ */
     @media (max-width: 900px) {
-        #app {
-            flex-direction: column;
-            height: auto;
-            width: 100vw;
-            backdrop-filter: none;
+        .header {
+            height: 46px;
+            padding: 0 14px;
         }
-        #panel {
-            width: 100%;
-            min-width: unset;
-            max-height: 45vh;
-            border-left: none;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
-            padding: 16px;
+        .header h1 {
+            font-size: 13px;
+        }
+        .header .back {
+            font-size: 11px;
+        }
+        #app {
+            position: relative;
         }
         #canvas-wrap {
-            height: 55vh;
+            width: 100%;
+            height: 100%;
+            flex: none;
+        }
+        /* 面板改为从底部滑出的抽屉 */
+        #panel {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            min-width: unset;
+            max-height: 70vh;
+            max-height: 70dvh;
+            padding: 16px 16px 20px;
+            border-left: none;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px 20px 0 0;
+            transform: translateY(100%);
+            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 40;
+            box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.5);
+            gap: 10px;
+        }
+        #panel.open {
+            transform: translateY(0);
+        }
+        /* 抽屉顶部把手 */
+        #panel::before {
+            content: '';
+            position: absolute;
+            top: 6px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 4px;
+            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+        #panel-toggle {
+            display: flex;
+        }
+        .section {
+            padding: 10px 12px;
+            border-radius: 10px;
+        }
+        .btn {
+            font-size: 12px;
+            padding: 7px 10px;
+            min-width: 50px;
+        }
+        .legend {
+            padding: 6px 10px;
+            font-size: 10px;
+            max-width: 160px;
+        }
+        .legend b {
+            font-size: 10px;
+        }
+        .legend .gradient-bar .bar {
+            width: 60px;
+            height: 7px;
+        }
+        #phase-info {
+            font-size: 11px;
+            padding: 4px 12px;
+        }
+    }
+    @media (max-width: 500px) {
+        .header h1 {
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+        .header .back span {
+            display: none;
         }
         #legend-panel {
             top: 8px;
             left: 8px;
-            transform: scale(0.85);
+            transform: scale(0.8);
             transform-origin: top left;
         }
     }
-    @media (max-width: 500px) {
+    /* 横屏手机 / 小高度设备 */
+    @media (max-height: 500px) and (max-width: 900px) {
         #panel {
-            padding: 12px;
-            gap: 10px;
+            max-height: 80vh;
+            max-height: 80dvh;
         }
-        .section {
-            padding: 10px 12px;
-        }
-        .btn {
-            font-size: 12px;
-            padding: 6px 10px;
-            min-width: 50px;
+        .header {
+            height: 40px;
         }
     }
 </style>
@@ -467,39 +568,39 @@
 <body>
 
 <header class="header">
-    <h1>📡 3D 矩形波导 · 电磁场可视化（时变）</h1>
-    <a class="back" href="index.html">← 返回实验大厅</a>
+    <h1>📡 3D 矩形波导 · 电磁场可视化</h1>
+    <a class="back" href="index.html">← <span>返回实验大厅</span></a>
 </header>
 
 <div id="app">
     <div id="canvas-wrap">
-        <div id="phase-info">时间相位: <span id="phase">0</span> rad</div>
+        <div id="phase-info">相位: <span id="phase">0</span> rad</div>
 
         <div id="legend-panel">
             <div class="legend" id="fieldLegend">
                 <b>电场 |E|（暖色）</b>
                 <div class="gradient-bar">
-                    <span style="color:#ffdd00;font-size:16px;">■</span>
+                    <span style="color:#ffdd00;font-size:14px;">■</span>
                     <div class="bar" style="background:linear-gradient(to right, #ffdd00, #ff0000);"></div>
-                    <span style="color:#ff0000;font-size:16px;">■</span>
+                    <span style="color:#ff0000;font-size:14px;">■</span>
                 </div>
                 <div class="bar-label">弱 → 强</div>
                 <br>
                 <b>磁场 |H|（冷色）</b>
                 <div class="gradient-bar">
-                    <span style="color:#00aaff;font-size:16px;">■</span>
+                    <span style="color:#00aaff;font-size:14px;">■</span>
                     <div class="bar" style="background:linear-gradient(to right, #00aaff, #6600ff);"></div>
-                    <span style="color:#6600ff;font-size:16px;">■</span>
+                    <span style="color:#6600ff;font-size:14px;">■</span>
                 </div>
                 <div class="bar-label">弱 → 强</div>
             </div>
 
             <div class="legend" id="chargeLegend" style="display:none;">
-                <b>壁面电荷密度 σ = ε₀Eₙ</b>
+                <b>壁面电荷密度 σ</b>
                 <div class="gradient-bar">
-                    <span style="color:#0000ff;font-size:16px;">■</span>
+                    <span style="color:#0000ff;font-size:14px;">■</span>
                     <div class="bar" style="background:linear-gradient(to right, #0000ff, #ffffff, #ff0000);"></div>
-                    <span style="color:#ff0000;font-size:16px;">■</span>
+                    <span style="color:#ff0000;font-size:14px;">■</span>
                 </div>
                 <div class="bar-label">负 → 零 → 正</div>
             </div>
@@ -507,9 +608,9 @@
             <div class="legend" id="poyntingLegend" style="display:none;">
                 <b>坡印廷矢量 S = E × H</b>
                 <div class="gradient-bar">
-                    <span style="color:#fff0f5;font-size:16px;">■</span>
+                    <span style="color:#fff0f5;font-size:14px;">■</span>
                     <div class="bar" style="background:linear-gradient(to right, #fff0f5, #ff88cc, #ff3399, #cc0066, #660066);"></div>
-                    <span style="color:#660066;font-size:16px;">■</span>
+                    <span style="color:#660066;font-size:14px;">■</span>
                 </div>
                 <div class="bar-label">弱 → 强</div>
             </div>
@@ -517,9 +618,9 @@
             <div class="legend" id="currentLegend" style="display:none;">
                 <b>管壁电流密度 J = n̂×H</b>
                 <div class="gradient-bar">
-                    <span style="color:#eeffaa;font-size:16px;">■</span>
+                    <span style="color:#eeffaa;font-size:14px;">■</span>
                     <div class="bar" style="background:linear-gradient(to right, #eeffaa, #00ff44, #052805);"></div>
-                    <span style="color:#052805;font-size:16px;">■</span>
+                    <span style="color:#052805;font-size:14px;">■</span>
                 </div>
                 <div class="bar-label">弱 → 强</div>
             </div>
@@ -527,32 +628,31 @@
             <div class="legend" id="probeLegend" style="display:none;">
                 <b>探针读数</b>
                 <div style="margin-top:4px;display:flex;align-items:center;gap:6px;">
-                    <span style="font-size:16px;">🔍</span>
+                    <span style="font-size:14px;">🔍</span>
                     <span>白色球：探针位置</span>
                 </div>
                 <div style="margin-top:4px;display:flex;align-items:center;gap:6px;">
                     <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:linear-gradient(to right, #0000ff, #ffffff, #ff0000);border:1px solid rgba(0,0,0,1);"></span>
-                    <span>球颜色/大小：壁面电荷密度 σ</span>
+                    <span>球色/大小：σ</span>
                 </div>
                 <div style="margin-top:4px;display:flex;align-items:center;gap:6px;">
-                    <span style="color:#00ff44;font-size:14px;">➜</span>
-                    <span>绿色箭头：局部电流密度 J</span>
+                    <span style="color:#ff4444;font-size:12px;">➜</span><span>红：电场 E</span>
                 </div>
                 <div style="margin-top:4px;display:flex;align-items:center;gap:6px;">
-                    <span style="color:#ff4444;font-size:14px;">➜</span>
-                    <span>红色箭头：瞬时电场 E</span>
+                    <span style="color:#44aaff;font-size:12px;">➜</span><span>蓝：磁场 H</span>
                 </div>
                 <div style="margin-top:4px;display:flex;align-items:center;gap:6px;">
-                    <span style="color:#44aaff;font-size:14px;">➜</span>
-                    <span>蓝色箭头：瞬时磁场 H</span>
+                    <span style="color:#ff3399;font-size:12px;">➜</span><span>品红：坡印廷 S</span>
                 </div>
                 <div style="margin-top:4px;display:flex;align-items:center;gap:6px;">
-                    <span style="color:#ff3399;font-size:14px;">➜</span>
-                    <span>品红箭头：坡印廷矢量 S</span>
+                    <span style="color:#00ff44;font-size:12px;">➜</span><span>绿：电流密度 J</span>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- 移动端面板开关 -->
+    <button id="panel-toggle" title="显示/隐藏参数">⚙️</button>
 
     <div id="panel">
         <div class="panel-title">
@@ -739,6 +839,7 @@ scene.background = new THREE.Color("#080816");
 const camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.1, 2000);
 const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 document.getElementById('canvas-wrap').appendChild(renderer.domElement);
 
 camera.position.set(14,9,16);
@@ -851,7 +952,75 @@ const teMDensityInput = document.getElementById('teMDensity');
 const teMDensityVal = document.getElementById('teMDensityVal');
 
 const phaseDisplay = document.getElementById('phaseDisplay');
+const phaseInfoSpan = document.getElementById('phase');
 const runState = document.getElementById('runState');
+
+// ============ 移动端面板抽屉控制 ============
+const panelToggle = document.getElementById('panel-toggle');
+const panel = document.getElementById('panel');
+let isPanelOpen = false;
+
+function setPanelOpen(open) {
+    isPanelOpen = open;
+    if (open) {
+        panel.classList.add('open');
+        panelToggle.textContent = '✕';
+    } else {
+        panel.classList.remove('open');
+        panelToggle.textContent = '⚙️';
+    }
+}
+
+panelToggle.addEventListener('click', () => {
+    setPanelOpen(!isPanelOpen);
+});
+
+// 桌面端默认不隐藏面板；移动端默认收起
+function checkMobileLayout() {
+    if (window.innerWidth <= 900) {
+        // 移动端：默认收起，显示切换按钮
+        if (!isPanelOpen) {
+            panel.classList.remove('open');
+            panelToggle.textContent = '⚙️';
+        }
+    } else {
+        // 桌面端：始终显示面板，隐藏切换按钮
+        panel.classList.remove('open');
+        panelToggle.style.display = 'none';
+    }
+}
+
+// 初始判断
+if (window.innerWidth <= 900) {
+    // 移动端初始收起
+    panel.classList.remove('open');
+    panelToggle.textContent = '⚙️';
+}
+
+// 监听尺寸变化，重设布局
+let lastIsMobile = window.innerWidth <= 900;
+window.addEventListener('resize', () => {
+    const isMobile = window.innerWidth <= 900;
+    if (isMobile !== lastIsMobile) {
+        lastIsMobile = isMobile;
+        if (isMobile) {
+            setPanelOpen(false);
+        } else {
+            panel.classList.remove('open');
+            panelToggle.textContent = '⚙️';
+            isPanelOpen = false;
+        }
+    }
+    // 更新 3D 渲染尺寸
+    const wrap = document.getElementById('canvas-wrap');
+    const w = wrap.clientWidth;
+    const h = wrap.clientHeight;
+    camera.aspect = w/h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w,h);
+});
+
+// ============ 原有逻辑 ============
 
 function updateLegendVisibility() {
     fieldLegend.style.display = (showECheck.checked || showMCheck.checked) ? 'block' : 'none';
@@ -2600,12 +2769,14 @@ function loop(){
         if(showPoyntingCheck.checked) updatePoyntingField(phase); else clearPoyntingField();
         if(pickedPoint) updateFieldProbe(phase);
         phaseDisplay.textContent = phase.toFixed(2);
+        phaseInfoSpan.textContent = phase.toFixed(2);
     }
     controls.update(); renderer.render(scene,camera);
 }
 loop();
 
-window.onresize = ()=>{
+// 初始化渲染尺寸
+function resizeRenderer() {
     const wrap = document.getElementById('canvas-wrap');
     const w = wrap.clientWidth;
     const h = wrap.clientHeight;
@@ -2613,6 +2784,12 @@ window.onresize = ()=>{
     camera.updateProjectionMatrix();
     renderer.setSize(w,h);
 }
+resizeRenderer();
+
+window.addEventListener('resize', resizeRenderer);
+
+// 延迟一帧再调整一次，确保初始布局完成
+setTimeout(resizeRenderer, 100);
 </script>
 </body>
 </html>
